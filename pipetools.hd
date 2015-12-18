@@ -1,0 +1,12 @@
+# Help directory for the pipetools package
+
+$doc = "pipetools$doc/"
+
+saltedtky		hlp=doc$saltedtky.hlp,   src=pipetools$saltedtky.py
+saltbin2fit             hlp=doc$saltbin2fit.hlp, src=pipetools$saltbin2fit.py
+saltemail		hlp=doc$saltemail.hlp,   src=pipetools$saltemail.py
+saltfast		hlp=doc$saltfast.hlp,    src=pipetools$saltfast.py
+saltftp			hlp=doc$saltftp.hlp,     src=pipetools$saltftp.py
+salthtml		hlp=doc$salthtml.hlp,    src=pipetools$salthtml.py
+saltobsid		hlp=doc$saltobsid.hlp,   src=pipetools$saltobsid.py
+saltpipe		hlp=doc$saltpipe.hlp,    src=pipetools$saltpipe.py

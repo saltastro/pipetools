@@ -1,0 +1,21 @@
+Pipeline Tasks:
+ saltbin2fit -- Convert slot mode binary files to FITS format
+  saltfixsec -- Fix SEC keyword bug in data taken before Aug 12, 2006
+   saltclean -- Gain, debias, flat field, xtalk, mosaic etc in one step
+   saltedtky -- Edit primary fits keywords in multiple files
+   saltemail -- Send standard email message to PI of observing program
+    saltfast -- Notify the PI that data were observed
+     saltftp -- Arcive, compress and transfer data to public FTP server
+    salthtml -- Create HTML documentation of observations and reduction
+   saltedtky -- Edit or append primary FITS keywords to multiple files
+   saltobsid -- Collate data files according to observation ID
+    saltpipe -- SALT data reduction pipeline
+
+--------------------------------------------------------------------
+PySALT is a suite of PyRAF tools for the reduction and analysis of
+data obtained from the SALTICAM and RSS instruments mounted on the
+Southern African Large Telescope (SALT). Find a description of SALT
+and the instruments at www.salt.ac.za and find the PyRAF homepage at
+www.stsci.edu/resources/software_hardware/pyraf. Send comments,
+suggestions and bug reports to salthelp@saao.ac.za.
+--------------------------------------------------------------------
