@@ -1,0 +1,8 @@
+inpath,s,a,'.',,,'Directory containing binary format files'
+outpath,s,a,'.',,,'Directory in which to deposit FITS files'
+cleanup,b,h,yes,,,'Delete tertiary output files?'
+fitsconfig,s,h,'/iraf/extern/pysalt/data/fits.config',,,'FITS configuration file '
+logfile,s,a,'salt.log',,,'Logfile'
+verbose,b,h,yes,,,'Verbose?'
+status,i,h,0,,,'Exit status (0=good)'
+mode,s,h,"al" 

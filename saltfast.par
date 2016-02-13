@@ -1,0 +1,13 @@
+obsdate,s,a,'',,,'Observation date in YYYYMMDD'
+readme,s,a,'/iraf/extern/pysalt/html/readme.fast.template',,,'Template for FAST response email'
+emailserver,s,h,'smtp.saao.ac.za',,,'Server for sending emails'
+username,s,h,'sa',,,'Username on destination server'
+password,s,h,'',,,'Password on destination server'
+bcc,s,h,'',,,'Additional email addresses to be included'
+sdbhost,s,h,'sdbdev',,,'Host for Science Database'
+sdbname,s,h,'sdb_test_v2a',,,'Name of Science Database'
+sdbuser,s,h,'pipeline',,,'User for Science Database'
+clobber,b,h,'no',,,'Overwrite existing files?'
+logfile,s,h,'saltftp.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 
