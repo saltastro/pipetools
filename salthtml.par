@@ -1,0 +1,10 @@
+propcode,s,a,'all',,,'List of Proposal codes'
+scamobslog,s,a,'obslog.fits',,,'SALTICAM observation log'
+rssobslog,s,a,'obslog.fits',,,'RSS observation log'
+htmlpath,s,a,'.',,,'Path to write HTML files'
+nightlog,s,a,'',,,'Astronomers\' night log'
+readme,s,a,'/iraf/extern/pysalt/html/readme.template',,,'Cape Town notes'
+clobber,b,h,'no',,,'Overwrite existing files?'
+logfile,s,a,'salthtml.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 

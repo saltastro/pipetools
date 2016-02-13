@@ -1,0 +1,6 @@
+obsdate,s,a,'',,,'Observing date, format YYYYMMDD'
+archpath,s,a,'/salt/data/',,,'Path to archive data'
+clobber,b,h,'no',,,'Overwrite existing files?'
+logfile,s,a,'saltarchive.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 

@@ -1,0 +1,13 @@
+propcode,s,a,'all',,,'List of Proposal codes'
+obsdate,s,a,'',,,'Observation date in YYYYMMDD'
+readme,s,a,'/iraf/extern/pysalt/html/readme.template',,,'Cape Town notes'
+server,s,a,'smtp.saao.ac.za',,,'Email server'
+username,s,a,'sa',,,'Username on email server'
+password,s,a,'',,,'Password on email server'
+bcc,s,a,'',,,'Additional email addresses to be included'
+sdbhost,s,a,'sdbdev',,,'Host for Science Database'
+sdbname,s,a,'sdb_test_v2a',,,'Name of Science Database'
+sdbuser,s,a,'pipeline',,,'User for Science Database'
+logfile,s,a,'saltemail.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 
