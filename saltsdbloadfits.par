@@ -1,0 +1,8 @@
+images,s,a,'S*.fits',,,'Input images or list of images'
+sdbhost,s,a,'sdbdev',,,'Host for Science Database'
+sdbname,s,a,'sdb_test_v2a',,,'Name of Science Database'
+sdbuser,s,a,'pipeline',,,'User for Science Database'
+password,s,a,'',,,'Password on email server'
+logfile,s,a,'saltemail.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 

@@ -1,0 +1,8 @@
+obsdate,s,a,'',,,'Observing date, format YYYYMMDD'
+imdir,s,a,'',,,'Default directory for image data'
+prodir,s,a,'',,,'Directory to store processed data'
+clobber,b,h,yes,,, 'Provide first order reductions of the files'
+clobber,b,h,no,,,'Overwrite existing files?'
+logfile,s,a,'salt.log',,,'Logfile'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 

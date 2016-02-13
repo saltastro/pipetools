@@ -1,0 +1,13 @@
+selection,s,a,'',,,'Columns to selction from the FITS Header tables'
+logic,s,a,'',,,'Logic to use when selecting the columns'
+startdate,s,a,'',,,'Start date to search for files.  Use YYYYMMDD format'
+enddate,s,a,'',,,'End date to search for files.  Use YYYYMMDD format'
+outfile,s,a,'',,,'Output file to write results.  Leave blankf for stdout'
+sdbhost,s,a,'sdb.saao',,,'Host for Science Database'
+sdbname,s,a,'sdb',,,'Name of Science Database'
+sdbuser,s,a,'pipeline',,,'User for Science Database'
+password,s,a,'',,,'Password on email server'
+clobber,b,h,no,,,'Overwrite exisitng files?'
+logfile,s,a,'saltemail.log',,,'Data processing log file'
+verbose,b,h,yes,,,'Verbose?'
+mode,s,h,"al" 
