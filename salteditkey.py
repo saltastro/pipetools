@@ -56,11 +56,14 @@ S M Crawford (SAAO)    0.4          16 Sep 2011
 
 from __future__ import with_statement
 
-import os, re, glob, time, shutil, pyfits, numpy
+import os, re, glob, time, shutil, numpy
 
 from pyraf import iraf
 from pyraf.iraf import pysalt
-import os, string, sys, glob, pyfits, time
+import os, string, sys, glob, time
+
+from astropy.io import fits
+
 
 import saltsafestring as saltstring
 import saltsafekey as saltkey
@@ -134,6 +137,7 @@ def salteditkey(images,outimages,outpref, keyfile, recfile=None,clobber=False,lo
 
                #open up the new files
                struct = saltio.openfits(img,mode=openmode)
+               struct.verify('fix')
 
                for kdict in klist:
                    for keyword in kdict:
@@ -188,13 +192,13 @@ def salteditkey(images,outimages,outpref, keyfile, recfile=None,clobber=False,lo
 def createrecord(recfile, fitcol, keycol, oldcol, newcol, clobber):
    """Create the fits table record of all of the changes that were made"""
 
-   col1 = pyfits.Column(name='FILE',format='32A',array=fitcol)
-   col2 = pyfits.Column(name='KEYWD',format='8A',array=keycol)
-   col3 = pyfits.Column(name='OLD_VAL',format='24A',array=oldcol)
-   col4 = pyfits.Column(name='NEW_VAL',format='24A',array=newcol)
-   cols = pyfits.ColDefs([col1,col2,col3,col4])
+   col1 = fits.Column(name='FILE',format='32A',array=fitcol)
+   col2 = fits.Column(name='KEYWD',format='8A',array=keycol)
+   col3 = fits.Column(name='OLD_VAL',format='24A',array=oldcol)
+   col4 = fits.Column(name='NEW_VAL',format='24A',array=newcol)
+   cols = fits.ColDefs([col1,col2,col3,col4])
    try:
-       rectable = pyfits.new_table(cols)
+       rectable = fits.BinTableHDU.from_columns(table)
    except:
        message='Cannot open FITS structure ' + recfile
        raise SaltError
