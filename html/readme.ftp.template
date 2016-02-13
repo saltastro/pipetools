@@ -1,0 +1,50 @@
+Dear SALT user,
+
+Your data are now available for pickup through ftp:
+
+Raw Data:
+ftp://saltdata.salt.ac.za/YYYY-INST-PID.yyyymmdd_raw.tar.bz2
+
+Product Data:
+ftp://saltdata.salt.ac.za/YYYY-INST-PID.yyyymmdd_product.tar.bz2
+
+Documentation:
+ftp://saltdata.salt.ac.za/YYYY-INST-PID.yyyymmdd_doc.tar.bz2
+
+Or one tarball containing all of the data products:
+ftp://saltdata.salt.ac.za/YYYY-INST-PID.yyyymmdd.tar.bz2
+
+
+
+You will need to login to the ftp server using your PIPT username and
+password.  Due to limitations in storage, the data will only remain
+available for a maximum of one month of time.   For further details
+on the pipeline reductions, please see:
+https://sciencewiki.salt.ac.za/index.php/SALT_Data_Quality
+
+Bandwidth within South Africa is improving but still relatively
+small.  In order to avoid problems caused by download interruptions we
+recommend using the wget package to download your data rather than
+standard FTP. A typical execution of wget will look like this:
+wget --user=PIPT_login --password='PIPT_passwd' -b -c -t 100 
+   ftp://saltdata.salt.ac.za/YYYY-INST-PID.yyyymmdd_product.tar.bz2
+
+If the connection is broken then the download will restart
+automatically at the byte where the procedure failed rather than
+returning to the first byte in the file.
+
+Data is archived in a tar file and compressed with the bzip2
+scheme. Data may be extracted from the tar file using:
+tar jxvf YYYY-INST-PID.yyyymmdd.tar.bz2
+
+Observation and pipeline documentation are provided within the doc/
+directory contained in the archive.  The documentation format is HTML
+and is best read by opening the file doc/CapeTownNotesyyyymmdd.html
+with your web browser. 
+
+Contact the SALT project at salthelp@saao.ac.za if you have any
+difficulty downloading, inspecting, or analyzing your data.
+
+Sincerely,
+The SALT Operations Team
+

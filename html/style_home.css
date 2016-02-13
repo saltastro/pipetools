@@ -1,0 +1,33 @@
+/* style.css for SALT
+   This file has specifications which differ from those in the style
+   file of the root page.
+/* Created by Arfon Smith, modified by Michelle Bassett     */
+/* Merged with style files for SAAO and SALT Internet sites */
+/* by Anne Charles, 15 February 2006                        */
+
+/* Positioning for the left page column ("Normal" column in Typo3) */
+#page-left{
+	width: 900px;
+	padding-left: 5px;
+	float:left;
+	margin-right: 10px;
+}
+
+/* Positioning for the right page column */
+#page-right{
+	width: 200px;
+	padding: 5px 5px 5px 5px;
+	float: right;
+	margin-right: 10px;
+        border: 1px solid #64748B;	
+}
+
+/*
+	**	News **
+*/
+/* dd is the news box title */
+dd {
+	font-size: 11px;
+	text-align: justify;
+	font-weight: bold;
+}

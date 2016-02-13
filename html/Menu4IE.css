@@ -1,0 +1,74 @@
+/* 
+ *	Horizontal, top-2-bottom
+ *	## Tweaks for IE5, IE6
+ *	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ *	(c) 2004 - Aleksandar Vacic, www.aplus.co.yu
+ * Some rights reserved, http://creativecommons.org/licenses/by/2.0/
+ *	- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+ */
+/* By Arfon Smith and Michelle Bassett.
+    Modified by 15 February 2006 by Anne Charles
+*/
+
+/*		------	Basic style	------		*/
+
+/* Fix IE6's inability to expand clickable area */
+
+/* Toplevel - change text and background colour & sub menu drop down */
+/* "position: relative" puts sub-menu below current level - if absolute sub-menu appears on top of it */ 
+#menu li:hover a{ 
+	position: relative;
+	color: #FFFFFF;
+	background: #64748B;
+}
+
+/* changes font and background colour of roll-over on sub menus */
+#menu li:hover li:hover a {
+	position: relative;
+	color: #FDB52A;
+	background: #253449;
+}
+
+/* IE can't handle display, so fail-over to visibility */
+/* hides sub-menus on loading */
+#menu li ul {
+	display: block;
+	visibility: hidden;
+}
+
+/* simulate child selector for IE */
+/* to position submenus = "left: 0" to align with toplevel */
+#menu li:hover ul{
+	visibility: visible;
+	z-index: 10000;
+	left: 0;
+}
+
+/* 2nd level sub-menus */
+#menu li:hover li:hover ul{
+	visibility: visible;
+	z-index: 10000;
+	left: relative;
+}
+
+/* This is needed if you have 3rd level menus */
+#menu li:hover li:hover li:hover ul {
+	visibility: visible;
+	z-index: 20000;
+	left: relative;
+}
+
+/* This will make the next sub-menu appear on top of the above level */
+#menu li:hover li ul{
+	visibility: hidden;
+}
+
+/* This is needed if you have 3rd level menus */
+#menu li:hover li:hover li ul{
+	visibility: hidden;
+}
+
+/* This is needed if you have 4th level menus */
+#menu li:hover li:hover li:hover li ul {
+	visibility: hidden;
+}

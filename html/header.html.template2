@@ -1,0 +1,32 @@
+</head>
+<body bgcolor="#FFFFFF">
+
+</STYLE>
+
+
+<table width="900px" align="center" border="0" cellpadding="0" cellspacing="0" bgcolor="#FFFFFF" style="table-layout: fixed; margin-top: 0px; margin-bottom: 0px;">
+  <tr bgcolor="#000000">
+    <td>
+      <img src="http://www.saao.ac.za/~still/salt/header_salt.jpg" width="900px" alt="SALT - Southern African Large Telescope" />
+    </td>
+  </tr>
+  <tr bgcolor="#000000">
+    <td>
+ 	  <div align="center" id="menu"><ul id="menuList" class="adxm">
+	      <li><a href="ObservationSequence.html">Observation Sequence</a></li>
+	      <li><a href="FileNavigation.html">File Navigation</a></li>
+	      <li><a href="PipelineLog.html">Pipeline Log</a></li>
+	      <li><a href="AstronomersLog.html">Astronomer's Log</a></li>
+	      <li><a href="EnvironmentLog.html">Environment Log</a></li>
+	      <li><a href="InstrumentDiagnostics.html">Instrument Diagnostics</a></li>
+	      <li><a href="CapeTownNotes.html">Cape Town Notes</a></li>
+	  </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div id="breadcrumbs"></div>
+      <div class="clear"></div>
+      <div id="page">
+	<div id="page-left">					
+	  <a name="8"></a>

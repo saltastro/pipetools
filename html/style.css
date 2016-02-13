@@ -1,0 +1,358 @@
+/* style.css for SAAO Intranet site                         */
+/* Created by Arfon Smith, modified by Michelle Bassett     */
+/* Merged with style files for SAAO and SALT Internet sites */
+/* by Anne Charles, 15 February 2006                        */
+
+body {
+	margin:0px;
+	font-family:foundry, verdana, arial, helvetica, sans-serif;
+	color:#333;
+	background-color:#E2E6EB;
+	background-color:#FFFFFF;
+}
+
+#page{
+	width: 860px;
+	margin-top: -3px;
+	clear: both;
+}
+
+/* 'clear' put a blank line in the template */
+div.clear {
+	clear: both;
+	height:14px;
+}
+
+/* Positioning for the left page column ("Normal" column in Typo3) */
+#page-left{
+	width: 850px;
+	padding-left: 5px;
+}
+
+/* This ensures that all images do not have borders */
+img{
+	border: 0px;
+}
+
+#breadcrumbs{
+	float: left;
+	color: #505662;
+	font-size: 12px;
+	font-weight: lighter;
+        margin-top: 3px;
+        margin-left: 5px;
+}
+
+#searchbox {
+        float: right;
+        margin-top: 3px;
+}
+
+#footer{
+	width: 860px;
+	text-align: center;
+	font-size: 9px;
+	font-weight: lighter;
+	padding-top: 24px;
+	color: #64748B;
+	clear: both;
+}
+
+/* text styles*/
+p {
+        font-size: 14px;
+}
+
+p.bodytext {
+        font-size: 14px;
+}
+
+p.smaller {
+        font-size: 10px;
+}
+
+p.small {
+        font-size: 12px;
+}
+
+p.big {
+        font-size: 16px;
+}
+
+p.bigger {
+        font-size: 18px;
+}
+
+li.smaller {
+        font-size: 10px;
+}
+
+li.small {
+        font-size: 12px;
+}
+
+li.big {
+        font-size: 16px;
+}
+
+li.bigger {
+        font-size: 18px;
+}
+
+span.smaller {
+        font-size: 10px;
+}
+
+span.small {
+        font-size: 12px;
+}
+
+span.big {
+        font-size: 16px;
+}
+
+span.bigger {
+        font-size: 18px;
+}
+
+.contenttable {
+	font-size: 14px;
+	margin-top: 14px;
+	margin-bottom: 14px;
+	border-width: 1px 1px 1px 1px;
+	border-spacing: 2px;
+	border-style: outset outset outset outset;
+	border-color: black black black black;
+	border-collapse: separate;
+	background-color: rgb(250, 240, 230);
+}
+
+.contenttable th {
+	border-width: 1px 1px 1px 1px;
+	padding: 1px 1px 1px 1px;
+	border-style: inset inset inset inset;
+	border-color: black black black black;
+	background-color: white;
+	-moz-border-radius: 0px 0px 0px 0px;
+}
+
+.contenttable td {
+	border-width: 1px 1px 1px 1px;
+	padding: 1px 1px 1px 1px;
+	border-style: inset inset inset inset;
+	border-color: black black black black;
+	background-color: white;
+	-moz-border-radius: 0px 0px 0px 0px;
+}
+
+ul, li, ol{
+	font-size: 14px;
+	text-align: left;
+}
+
+/* Image caption text */
+.csc-caption {
+	font-size: 9px;
+	text-align: center;
+}
+
+/* Page content headings */
+/* The browsers seem to interpret margin spec here as a page margin,
+   not as a margin for the div */
+div.csc-header{
+	clear: both;
+}
+
+/* I got rid of an additional spacer image and a line break by setting */
+/* lib.stdheader.stdWrap.space to 0|0 (from 0|5) in the TypoScript template. */
+/* I don't see any other way than this to get rid of the second line break. */
+/* ACC, 18 April 2006 */
+div.csc-header br {
+	display: none;
+}
+
+/* First page content heading */
+h1.csc-firstHeader{
+	font-size: 20px;
+	text-align: center;
+	padding-top: 15px;
+}
+
+/* Page content headings */
+/* padding needs to be specified here because it doesn't work for div's */
+h1{
+	font-size: 18px;
+	color: #64748B;
+	font-weight: bold;
+	padding-top: 10px;
+}
+
+h2 {
+	font-size: 18px;
+	color: #64748B;
+	font-weight: normal;
+}
+
+h3 {
+	font-size: 16px;
+	color: #64748B;
+	font-weight: bold;
+}
+
+h4 {
+	font-size: 16px;
+	color: #64748B;
+	font-weight: normal;
+}
+
+h5 {
+	font-size: 14px;
+	color: #64748B;
+	font-weight: bold;
+}
+
+h6 {
+	font-size: 14px;
+	font-weight: normal;
+	color: #64748B;
+}
+
+/* 
+		Horizontal, top-2-bottom menu
+*/
+
+/*		------	Basic style	------		*/
+/* The width is 798px for the SAAO and SALT external sites,
+   but 800px for the SAAO Intranet.
+   The reason must have something to do with the html templates.
+   Hopefully, as I merge the templates, this will be able to
+   be set to the same value. ACC, 15 Feb 2006
+*/
+#menu {
+	display: block;
+	position: relative;
+	top: 0;
+	left: 0;
+	float: left;
+}
+
+#menu ul {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	list-style-type: none;
+}
+
+#menu li {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	display: block;
+	float: left;
+	position: relative;
+}
+
+#menu a {
+	display: block;
+}
+
+#menu li li {
+	width: 100%;
+}
+
+/* fix the position for 2nd level submenus. first make sure no horizontal scrollbars are visible on initial page load... */
+#menu li li ul {
+	top: 0;
+	left: 0;
+}
+
+/* ...and then place it where it should be when shown */
+#menu li li:hover ul {
+	left: 100%;
+}
+
+/* initialy hide all sub menus */
+#menu li ul {
+	display: none;
+	position: absolute;
+	z-index: 10;
+}
+
+/* display them on hover */
+#menu li:hover>ul {
+	display: block;
+}
+
+/* this is needed if you want to style #menu div - force containment of floated LIs inside of main UL */
+#menuList:after {
+	content: ".";
+	height: 0;
+	display: block;
+	visibility: hidden;
+	overflow: hidden;
+	clear: both;
+}
+
+/*		------   Make-up	--------			*/
+
+#menu {
+	background: #000000;
+/*	border-left: 1px solid #000000;
+	border-right: 1px solid #000000;
+	border-bottom: 1px solid #000000;
+*/
+	font-size: 11px;
+	color: #FFFFFF;
+}
+
+/* Padding - Top Right Bottom Left */
+#menu a {
+	text-decoration: none;
+	text-align: center;
+	color: #FFFFFF;
+	padding: 5px 8px 5px 9px;
+	font-size: 12px;
+}
+
+#menu li:hover>a {
+	color: #FFFFCC;
+	background: #000000;
+}
+
+#menu li ul {
+	color: #FFFFFF;
+	background-color: #000000;
+	border: 1px solid #FFFFFF;
+	width: 100px;
+}
+
+#menu li li ul {
+	width: 120px;
+}
+
+#menu li ul a {
+	text-align: left;
+}
+
+#menu li li {
+	background: none;
+	border-bottom: 1px dotted #FFFFFF;
+}
+
+#menu li li a {
+	font-size: 12px;
+	font-weight: normal;
+	color: white;
+	text-align: left;
+	text-transform: none;
+	background: none;
+	padding: 5px 0px 4px 5px;
+}
+
+/* Changes colour of roll-over */
+#menu li li:hover>a {
+	color: #FDB52A;
+	background: #253449;
+}
+
+/* END MENU STYLES / FUNCTION */

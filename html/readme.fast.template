@@ -1,0 +1,33 @@
+Dear SALT user,
+
+Your raw data are now available for pickup through anonymous ftp:
+
+ftp://saltdata.salt.ac.za/fastOBSDATE/
+
+You will need to login to the ftp server using your PIPT username and
+password.  The raw data has been made availabe because you have
+selected the fast delivery option for your proposal.  In addition to
+the raw data, any first look data product is included in the
+directory.  This includes either a catalog of objects produced in
+imaging data or a 1-D spectrum for longslit data.  At this time the
+quality of these data are only good for a first look at the data.
+
+The data in the ftp directory is guaranteed only to remain at the 
+ftp website for 24 hours.  After that, it will be replaced by the 
+next observations or removed.  The data will be normally 
+passed through the reduction pipeline and made available to you
+as soon as possible.  Another email will be sent when the reduced
+data are ready for retrieval.
+
+This notification is being sent out as soon as data has been observed
+for your proposal.  There is no guarantee that the data product may be
+useful nor that the SALT astronomer may ultimately reject this block
+due to problems with the observation.  However, further information
+about your observations will be made as soon as possible.
+
+Contact the SALT project at salthelp@saao.ac.za if you have any
+difficulty downloading, inspecting or analyzing your data.
+
+Sincerely,
+The SALT Operations Team
+

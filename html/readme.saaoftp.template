@@ -1,0 +1,85 @@
+Dear SALT user,
+
+Your data are now available for pickup through anonymous ftp:
+
+ftp://www.salt.ac.za/pub/yourname/yyyymmdd.tar.bz2
+
+This data has been processed via the new SALT PyRAF pipeline.  The
+data should be of the same or better quality than previous 
+reductions.  However, the pipeline is still in shared-risk stage  
+and any feedback from the PI would be greatly appreciated.
+
+Bandwidth within South Africa is improving but still relatively
+small. In order to avoid problems caused by download interruptions we
+recommend using the wget package to download your data rather than
+standard FTP. wget can be obtained from the gnu website
+http://www.gnu.org/software/wget/ or alternatively mac OS X users can
+install from fink. A typical execution of wget will look like this:
+
+wget -c -t 100 ftp://www.salt.ac.za/pub/yourname/yyyymmdd.tar.bz2
+
+If the connection is broken then the download will restart
+automatically at the byte where the procedure failed rather than
+returning to the first byte in the file.
+
+Data is archived in a tar file and compressed with the bzip2
+scheme. Data may be extracted from the tar file using:
+
+tar jxvf yyyymmdd.tar.bz2
+
+Observation and pipeline documentation are provided within the doc/
+directory contained in the archive.  The documentation format is HTML
+and is best read by opening the file doc/CapeTownNotesyyyymmdd.html
+with your web browser. These files are equivalent to the README file
+produced in earlier versions.
+
+Contact the SALT project at salthelp@saao.ac.za if you have any
+difficulty downloading, inspecting or analyzing your data.
+
+Notes:
+--------------
+1. All data have been cleaned and reduced to a mosaicked 2-dimensional
+   form via a semi-automated pipeline using the SALT PyRAF package.
+   Primary data quality checking has been conducted, however PIs
+   should bear in mind that the reduction pipeline is not tailored to
+   individual scientific requirements and therefore it may be
+   desirable to re-reduce the raw data for publication purposes.
+
+2. The current pipeline concerns only 2-dimensional cleaning and
+   performs the following reduction:
+     a. fidelity checking
+     b. gain correction
+     c. cross-talk correction
+     d. bias subtraction (only overscan correction)
+     e. amplifier mosaicking (excluding slot mode)
+
+The following steps are not currently performed by the pipeline:
+     a. Master bias subtraction (pending calibration)
+     b. flat-fielding (SALT payload is not fully baffled)
+     c. cosmic-ray rejecting (pending coding)
+     d. fringe subtraction (pending calibration and coding)
+    
+
+3. To aid any re-reduction of your data, the SALT PyRAF package can be
+   downloaded from http://www.salt.ac.za/science-support/ where you
+   can also find installation instructions.
+
+4. The SALT ftp server will delete files older than one month because
+   of limited disk space.
+
+5. Both raw data and semi-reduced products are provided to the PI. Raw
+   data are stored in the 'raw' subdirectory and their names will contain
+   one of the following prefixes:
+     S - SALTICAM data
+     P - RSS (PFIS) data
+
+Reduced data are stored in the 'product' subdirectory and filenames
+   may contain any of the following prefixes:
+     p - files fidelity checked and prepared
+     x - cross-talk corrected
+     b - bias subtracted
+     m - mosaiced
+
+Sincerely,
+The SALT Operations Team
+
