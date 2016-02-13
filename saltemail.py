@@ -60,7 +60,7 @@ debug=True
 # -----------------------------------------------------------
 # core routine
 
-def saltemail(propcode, obsdate,readme,server='mail.saao.ac.za',username='sa', password='',
+def saltemail(propcode, obsdate,readme,server='mail.saao.ac.za',username='', password='',
               bcc='',sdbhost='sdb.saao',sdbname='sdb',sdbuser='pipeline',
               logfile='salt.log',verbose=True):
    """For a given date,  look into the database for observations made on that
