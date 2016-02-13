@@ -26,7 +26,7 @@ from __future__ import with_statement
 
 import sys,glob, os, shutil, time
 import numpy as np
-import pyfits
+from astropy.io import fits
 
 from pyraf import iraf
 from pyraf.iraf import pysalt
@@ -129,7 +129,7 @@ def saltadvance(images, outpath, obslogfile=None, gaindb=None,xtalkfile=None,
        for img in infiles:
            if os.path.basename(img) in biaslist:
                #open the image
-               struct=pyfits.open(img)
+               struct=fits.open(img)
                bimg=outpath+'bxgp'+os.path.basename(img)
 
                #print the message
@@ -180,7 +180,7 @@ def saltadvance(images, outpath, obslogfile=None, gaindb=None,xtalkfile=None,
        for img in infiles:
            if os.path.basename(img) in flatlist:
                #open the image
-               struct=pyfits.open(img)
+               struct=fits.open(img)
                fimg=outpath+'bxgp'+os.path.basename(img)
 
                #print the message
@@ -229,7 +229,7 @@ def saltadvance(images, outpath, obslogfile=None, gaindb=None,xtalkfile=None,
            nimg=os.path.basename(img)
            if nimg in arclist:
                #open the image
-               struct=pyfits.open(img)
+               struct=fits.open(img)
                simg=outpath+'bxgp'+os.path.basename(img)
                obsdate=os.path.basename(img)[1:9]
 
@@ -288,7 +288,7 @@ def saltadvance(images, outpath, obslogfile=None, gaindb=None,xtalkfile=None,
            if not (nimg in flatlist or nimg in biaslist or nimg in arclist):
      
                #open the image
-               struct=pyfits.open(img)
+               struct=fits.open(img)
                if struct[0].header['PROPID'].count('CAL_GAIN'): continue
                simg=outpath+'bxgp'+os.path.basename(img)
    
@@ -330,7 +330,7 @@ def saltadvance(images, outpath, obslogfile=None, gaindb=None,xtalkfile=None,
                if instrume=='RSS' and gainset=='FAINT' and rospeed=='SLOW':
                    bfile='P%sBiasNM%ix%iFASL.fits' % (obsdate, xbin, ybin)
                    if os.path.exists(bfile):
-                      bstruct=pyfits.open(bfile)
+                      bstruct=fits.open(bfile)
                       subbias=True
                    if detmode=='Normal' and target!='ARC' and xbin < 5 and ybin < 5:
                        crtype='edge' 
@@ -526,12 +526,13 @@ def clean(struct, createvar=False, badpixelstruct=None, mult=True, dblist=None, 
        #create the inv. variance frames
 
        for i in range(1, nsciext+1):
+           hdu=CreateVariance(struct[i], i, nextend+i)
            try:
-               hdu=CreateVariance(struct[i], i, nextend+i)
+               pass
            except Exception, e:
                msg='Cannot create variance frame in extension %i of  %s because %s' % (nextend+i, infile, e)
                raise SaltError(msg)
-           struct[i].header.update('VAREXT',nextend+i, comment='Extension for Variance Frame')
+           struct[i].header['VAREXT'] = (nextend+i, 'Extension for Variance Frame')
            struct.append(hdu)
        nextend+=nsciext
 
@@ -542,7 +543,7 @@ def clean(struct, createvar=False, badpixelstruct=None, mult=True, dblist=None, 
            except Exception, e:
                msg='Could not create bad pixel extension in ext %i of %s because %s' % (nextend+i, infile, e)
                raise SaltError(msg)
-           struct[i].header.update('BPMEXT',nextend+i, comment='Extension for Bad Pixel Mask')
+           struct[i].header['BPMEXT'] = (nextend+i, 'Extension for Bad Pixel Mask')
            struct.append(hdu)
        nextend+=nsciext
 
