@@ -1,45 +1,7 @@
 ################################# LICENSE ##################################
-# Copyright (c) 2009, South African Astronomical Observatory (SAAO)        #
+# Copyright (c) 2016, South African Astronomical Observatory (SAAO)        #
 # All rights reserved.                                                     #
-#                                                                          #
-# Redistribution and use in source and binary forms, with or without       #
-# modification, are permitted provided that the following conditions       #
-# are met:                                                                 #
-#                                                                          #
-#     * Redistributions of source code must retain the above copyright     #
-#       notice, this list of conditions and the following disclaimer.      #
-#     * Redistributions in binary form must reproduce the above copyright  #
-#       notice, this list of conditions and the following disclaimer       #
-#       in the documentation and/or other materials provided with the      #
-#       distribution.                                                      #
-#     * Neither the name of the South African Astronomical Observatory     #
-#       (SAAO) nor the names of its contributors may be used to endorse    #
-#       or promote products derived from this software without specific    #
-#       prior written permission.                                          #
-#                                                                          #
-# THIS SOFTWARE IS PROVIDED BY THE SAAO ''AS IS'' AND ANY EXPRESS OR       #
-# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED           #
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE   #
-# DISCLAIMED. IN NO EVENT SHALL THE SAAO BE LIABLE FOR ANY                 #
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL       #
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS  #
-# OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)    #
-# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,      #
-# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN #
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE          #
-# POSSIBILITY OF SUCH DAMAGE.                                              #
 ############################################################################
-
-#!/usr/bin/env python
-
-# Author                 Version      Date
-# -----------------------------------------------
-# Martin Still (SAAO)    0.2          01 Aug 2007
-# S M Crawford (SAAO)    0.3          29 Jan 2008
-
-# saltobsid compiles raw and reduced data into obsid-dependent
-# directories
-# 29 Jan changed the directories into propid directories
 
 from pyraf import iraf
 import pyfits, string, os, glob
@@ -58,6 +20,8 @@ debug=True
 # core routine
 
 def saltobsid(propcode,obslog,rawpath,prodpath,outpath,prefix='mbxgp', fprefix='bxgp',clobber=False,logfile='salt.log',verbose=True):
+   """Split data into their different data directories
+   """
 
 
    with logging(logfile,debug) as log:
@@ -165,13 +129,15 @@ def saltobsid(propcode,obslog,rawpath,prodpath,outpath,prefix='mbxgp', fprefix='
            prop_list=[]
 
            #if it is a flat, check to see what other data have the same settings 
-           if obstab[i]['CCDTYPE'].strip().upper()=='FLAT':
+           #this is turned off
+           if obstab[i]['CCDTYPE'].strip().upper()=='FLAT' and False:
                for j in range(len(obstab)):
                    if comparefiles(obstab[i], obstab[j],  flatheader_list):
                        prop_list.append(obstab[j]['PROPID'])
 
            #if it is a arc, check to see what other data have the same settings 
-           if obstab[i]['CCDTYPE'].strip().upper()=='ARC':
+           #this is turned off
+           if obstab[i]['CCDTYPE'].strip().upper()=='ARC' and False:
                for j in range(len(obstab)):
                    if comparefiles(obstab[i], obstab[j],  archeader_list):
                        prop_list.append(obstab[j]['PROPID'])

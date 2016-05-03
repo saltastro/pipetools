@@ -185,9 +185,9 @@ def findpropinfo(pid,sdb):
     """
     propinfo={}
     #setup the the query
-    state_select='pr.Proposal_Id,c.Proposal_Code,i.Surname,i.Email'
+    state_select='pr.Proposal_Id,c.Proposal_Code,i2.Surname,i2.Email'
     state_from='''
-	Investigator as i,
+	Investigator as i join PiptUser using (PiptUser_Id) join Investigator as i2 on (PiptUser.Investigator_Id=i2.Investigator_Id),
 	Proposal as pr 
 	  join ProposalCode as c using (ProposalCode_Id) 
 	  join  ProposalContact as pc using (Proposal_Id) '''
