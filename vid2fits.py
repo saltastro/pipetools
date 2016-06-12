@@ -36,7 +36,7 @@ import string
 import time
 import struct
 import numpy
-import pyfits
+from astropy.io import fits
 
 import saltsafeio as saltio
 import saltsafekey as saltkey
@@ -76,6 +76,7 @@ def write_ext_header (hdu, file, bhdu, ut,date,bscale,bzero,exptime,gain,rdnoise
    saltkey.new("EXPTIME",exptime,"Exposure time",hdu,file)
    saltkey.new("GAIN",gain,"Nominal CCD gain (e/ADU)",hdu,file)
    saltkey.new("RDNOISE",rdnoise,"Nominal readout noise in e",hdu,file)
+   saltkey.new("CCDSUM", bhdu.header['CCDSUM'], 'On chip summation', hdu, file)
    saltkey.copy(hdu,bhdu,"CCDSUM")
    saltkey.copy(hdu,bhdu,"DETSIZE")
    saltkey.new("DATASEC",datasec,"Data Section",hdu,file)
@@ -88,9 +89,7 @@ def write_ext_header (hdu, file, bhdu, ut,date,bscale,bzero,exptime,gain,rdnoise
    if framecnt:
        saltkey.new("FRAMECNT",framecnt,"Frame counter", hdu, file)
  
-
-
-   return
+   return hdu
 
 def processline(line):
     """process the line, remove comments, and return a key and value
@@ -238,17 +237,17 @@ def vid2fits(inhead, inbin,outfile, config):
 
    #create a new image and copy the header to it
    try:
-       hdu = pyfits.PrimaryHDU()
+       hdu = fits.PrimaryHDU()
        hdu.header=inheader
-       hduList = pyfits.HDUList(hdu)
-       hduList.verify()
-       hduList.writeto(outfile)
+       hduList = fits.HDUList(hdu)
+       #hduList.verify()
+       hduList.writeto(outfile, output_verify='ignore')
    except:
        message  = 'ERROR -- VID2FIT: Could not create new fits file'
        raise SaltError(message)
 
    #Now open up the file that you just made and update it from here on
-   hduList = saltio.openfits(outfile, mode='update')
+   hduList = fits.open(outfile, mode='update')
 
    #open the binary file
    bindata = saltio.openbinary(inbin,'rb')
@@ -329,7 +328,7 @@ def vid2fits(inhead, inbin,outfile, config):
                y2=y1+awidth
 
                data = imdata[:,y1:y2].astype(numpy.ushort)
-               hdue = pyfits.ImageHDU(data)
+               hdue = fits.ImageHDU(data)
                hdue.scale('int16','',bzero=bzero)
 
                #set the header values
@@ -337,7 +336,7 @@ def vid2fits(inhead, inbin,outfile, config):
                           create_header_values(condict,hdu,j,fheight)
 
                #fill in the header data
-               write_ext_header(hdue,outfile,hdu,time_obs,date_obs,bscale,bzero, \
+               hdue = write_ext_header(hdue,outfile,hdu,time_obs,date_obs,bscale,bzero, \
                           exptime,gain[j],rdnoise[j],datasec,detsec,ccdsec,ampsec, \
                           biassec, deadtime=deadtime, framecnt=framecnt )
 
