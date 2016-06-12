@@ -326,7 +326,7 @@ def vid2fits(inhead, inbin,outfile, config):
                y1=j*awidth
                y2=y1+awidth
 
-               data = imdata[:,y1:y2].astype(numpy.ushort)
+               data = imdata[:,y1:y2].astype(numpy.int16)
                hdue = fits.ImageHDU(data)
                hdue.scale('int16','',bzero=bzero)
 
