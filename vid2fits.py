@@ -77,7 +77,6 @@ def write_ext_header (hdu, file, bhdu, ut,date,bscale,bzero,exptime,gain,rdnoise
    saltkey.new("GAIN",gain,"Nominal CCD gain (e/ADU)",hdu,file)
    saltkey.new("RDNOISE",rdnoise,"Nominal readout noise in e",hdu,file)
    saltkey.new("CCDSUM", bhdu.header['CCDSUM'], 'On chip summation', hdu, file)
-   saltkey.copy(hdu,bhdu,"CCDSUM")
    saltkey.copy(hdu,bhdu,"DETSIZE")
    saltkey.new("DATASEC",datasec,"Data Section",hdu,file)
    saltkey.new("DETSEC",detsec,"Detector Section",hdu,file)
