@@ -278,7 +278,7 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
    else:
       raise ValueError('detname must be a valid HRS Detector name')
 
-   #process the red bias frames
+   #process the flat  frames
    matches = (image_list.summary['obstype'] == 'Flat field') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode)
    flat_list = []
    for fname in image_list.summary['file'][matches]:
@@ -324,3 +324,72 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
             olink='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(order_file))
             if os.path.isfile(olink) and clobber: os.remove(olink)
             os.symlink(order_file, olink)
+
+def hrsarc(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=None, master_order=None,
+            link=False, sdb=None, clobber=True):
+   """hrsarc processes the HRS Arc files.
+
+   Parameters
+   ----------
+   rawpath: string
+      Path to raw data
+
+   outpath: string
+      Path to output result
+
+   link: boolean
+      Add symbolic link to HRS_CALS directory
+
+   sdb: sdb_user.mysql
+      SDB object to upload data quality
+
+   clobber: boolean
+      Overwrite existing files
+
+   
+   """
+   if not os.path.isdir(rawpath): return
+
+   image_list = ImageFileCollection(rawpath)
+   if len(image_list.files)==0: return
+
+   #make output directory
+   if not os.path.isdir(outpath): os.mkdir(outpath)
+
+   #get the observing date
+   obsdate=get_obsdate(image_list.summary['file'][0])
+
+   #setup the instrument prefix
+  
+   if detname=='HRDET':
+      prefix='R'
+      process = red_process
+   elif detname=='HBDET':
+      prefix='H'
+      process = blue_process
+   else:
+      raise ValueError('detname must be a valid HRS Detector name')
+
+   #process the arc frames
+   matches = (image_list.summary['obstype'] == 'Arc') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode)
+
+   for fname in image_list.summary['file'][matches]:
+        ccd = process(rawpath+fname, masterbias=master_bias)
+        if sdb is not None: dq_ccd_insert(rawpath + fname, sdb)
+
+        #flat field the frame
+        ccd=flatfield_science(ccd, master_flat, master_order, median_filter_size=None, interp=True)
+
+        #write out frame
+        outfile = "{0}/p{1}".format(outpath, fname)
+        ccd.write(outfile, clobber=True)
+
+        #if link:
+            #link the individual file
+            #link='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(outfile))
+            #if os.path.isfile(link) and clobber: os.remove(link)
+            #os.symlink(outfile, link)
+            #link the solution
+            #olink='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(order_file))
+            #if os.path.isfile(olink) and clobber: os.remove(olink)
+            #os.symlink(order_file, olink)
