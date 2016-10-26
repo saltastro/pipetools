@@ -450,15 +450,12 @@ def hrsarc(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=Non
 
         hrs_arc_process(ccd, master_order, sol_dir, outpath, sdb, filename=fname)
 
-        #if link:
+        if link:
             #link the individual file
-            #link='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(outfile))
-            #if os.path.isfile(link) and clobber: os.remove(link)
-            #os.symlink(outfile, link)
-            #link the solution
-            #olink='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(order_file))
-            #if os.path.isfile(olink) and clobber: os.remove(olink)
-            #os.symlink(order_file, olink)
+            db_file = outpath + 'dbp' + fname.replace('.fits', '.pkl')
+            link='/salt/HRS_Cals/CAL_ARC/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(db_file))
+            if os.path.isfile(link) and clobber: os.remove(link)
+            os.symlink(db_file, link)
 
 def extract_spectra(arc, order_frame, n_order, soldir, target=True, flux_limit=100):
     shift_dict, ws = pickle.load(open(soldir+'sol_%i.pkl' % n_order))
@@ -490,6 +487,7 @@ def hrs_arc_process(arc, master_order, soldir, outpath, sdb=None, link=False, fi
 
     n_min = master_order.data[master_order.data>0].min()
     n_max = master_order.data.max()
+    ws_dict = {}
     for n_order in np.arange(n_min, n_max):
         if not os.path.isfile(soldir+'sol_%i.pkl' % n_order): continue
         x, w, f, ws, sh = extract_spectra(arc, master_order, int(n_order), soldir)
@@ -503,7 +501,10 @@ def hrs_arc_process(arc, master_order, soldir, outpath, sdb=None, link=False, fi
                                            ws.model)
         if sdb: upload_arc(sdb, ws, n_order, filename)
         ws.fit()
-        pickle.dump([sh, ws], open('sol_{}.pkl'.format(n_order), 'w'))
-
+        ws_dict[n_order] = ws
+    db_file = outpath + 'dbp' + filename.replace('.fits', '.pkl')
+    print(db_file)
+    pickle.dump(ws_dict, open(db_file, 'wb'))
+    
 
 
