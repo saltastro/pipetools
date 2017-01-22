@@ -164,7 +164,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        #check rss data
        lastrssnum = checkfordata(rssrawpath, 'P', obsdate, log)
        #check scame data
-       lastscmnum = checkfordata(scmrawpath, 'S', obsdate, log)
+       lastscmnum =  checkfordata(scmrawpath, 'S', obsdate, log)
        #check for HRS Data--not filedata yet, so cannot check
    
        if lastrssnum == 1 and lastscmnum == 1:
@@ -183,29 +183,20 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
            saltio.copydir(scmrawpath,'scam/raw')
 
        #copy and pre-process the HRS data
-       try:
-           hrsbrawpath = makerawdir(obsdate, 'hbdet')
-           saltio.createdir('hrs')
-           saltio.createdir('hrs/raw')
-           message = 'Copy ' + hrsbrawpath + ' --> ' + workpath + 'raw/'
-           log.message(message)
-           salthrspreprocess(hrsbrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       saltio.createdir('hrs')
+       saltio.createdir('hrs/raw')
 
-           lasthrbnum=len(glob.glob('hrs/raw/*fits'))
-       except Exception,e:
-           log.message('Could not copy HRS data because %s' % e)
-           lasthrbnum=0
-
-       try:
-           hrsrrawpath = makerawdir(obsdate, 'hrdet')
-           message = 'Copy ' + hrsrrawpath + ' --> ' + workpath + 'raw/'
-           log.message(message)
-           salthrspreprocess(hrsrrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
-           
-           lasthrsnum=max(lasthrbnum, len(glob.glob('hrs/raw/*fits')))
-       except Exception,e:
-           log.message('Could not copy HRS data because %s' % e)
-           lasthrsnum=lasthrbnum
+       hrsbrawpath = makerawdir(obsdate, 'hbdet')
+       message = 'Copy ' + hrsbrawpath + ' --> ' + workpath + 'raw/'
+       log.message(message)
+       salthrspreprocess(hrsbrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       lasthrbnum=len(glob.glob('hrs/raw/*fits'))
+       
+       hrsrrawpath = makerawdir(obsdate, 'hrdet')
+       message = 'Copy ' + hrsrrawpath + ' --> ' + workpath + 'raw/'
+       log.message(message)
+       salthrspreprocess(hrsrrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       lasthrsnum=max(lasthrbnum, len(glob.glob('hrs/raw/*fits')))
 
        if lastrssnum>1 or lastscmnum>1:
            message = 'Copy of data is complete'
@@ -256,7 +247,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        #advance process the data
        #NB: Turned off right now due to RSS being off
        if rssrawnum > 0:
-           advanceprocess('rss', obsdate,  propcode, median, function, order, rej_lo, rej_hi, niter, interp,sdbhost, sdbname, sdbuser, sdbpass, logfile, verbose)
+           pass #advanceprocess('rss', obsdate,  propcode, median, function, order, rej_lo, rej_hi, niter, interp,sdbhost, sdbname, sdbuser, sdbpass, logfile, verbose)
 
        #process the SCAM data
        scmrawsize, scmrawnum, scmprodsize, scmprodnum=processdata('scam', obsdate, propcode,  median, function, order, rej_lo, rej_hi, niter, interp,logfile, verbose)
@@ -595,6 +586,7 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
                subover=True,trim=True, median=median,function=function,order=order,rej_lo=rej_lo,
                rej_hi=rej_hi,niter=niter,masbias=True,subbias=False,interp=interp,
                clobber=True,logfile=logfile,verbose=verbose)
+      os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c {}'.format(obsdate))
 
    rawsize = 0.
    rawnum = 0
