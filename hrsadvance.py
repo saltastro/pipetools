@@ -28,13 +28,17 @@ import sys,glob, os, shutil, time
 import pickle
 import numpy as np
 
+import logging
+
 import datetime as dt
 
 from astropy.io import fits
 from astropy import stats
 from astropy import modeling as mod
+from astropy import units as u
 from scipy import ndimage as nd
 from pyhrs import normalize_image, create_orderframe, clean_flatimage
+from pyhrs import extract_order
 
 import ccdproc
 from ccdproc import CCDData
@@ -42,10 +46,12 @@ from ccdproc import ImageFileCollection
 
 from pyhrs.hrsprocess import *
 from pyhrs import mode_setup_information, HRSOrder, collapse_array
+from pyhrs import normalize_spectra, stitch_spectra
 
 from specreduce import WavelengthSolution
 from specreduce import match_probability, ws_match_lines
 
+from astroscrappy import detect_cosmics
 
 
 debug=True
@@ -210,12 +216,11 @@ def dq_order_insert(filename, sdb):
         log_cmd = "Filename = '{}' and HrsOrder =  {}".format(bname, i)
         record = sdb.select('y_upper', 'DQ_HrsOrder', log_cmd)
         ins_cmd = "x_reference={},y_lower={},y_upper={}".format(xc, y_lower, y_upper)
+        logging.info('Uploading HRS Order Measurements')
         if record:
-           pass #print 'update'
            sdb.update(ins_cmd, 'DQ_HrsOrder', log_cmd)
         else:
            ins_cmd = "Filename='{}', HrsOrder={},HrsMode_Id={},NightInfor_Id={},".format(bname, i, mode_id, night_id)  + ins_cmd
-           #print 'insert'
            sdb.insert(ins_cmd, 'DQ_HrsOrder')
         
 
@@ -280,20 +285,20 @@ def hrsbias(rawpath, outpath, link=False, mem_limit=1e9, sdb=None, clobber=True)
 
 
    #provide the link to the bias frame
-   if link:
-       ldir = '/salt/HRS_Cals/CAL_BIAS/{0}/{1}/'.format(obsdate[0:4], obsdate[4:8])
-       if not os.path.isdir(ldir): os.mkdir(ldir)
-       ldir = '/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product'.format(obsdate[0:4], obsdate[4:8])
-       if not os.path.isdir(ldir): os.mkdir(ldir)
-
-       infile="{0}/RBIAS_{1}.fits".format(outpath, obsdate)
-       link='/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product/RBIAS_{2}.fits'.format(obsdate[0:4], obsdate[4:8], obsdate)
-       if os.path.isfile(link) and clobber: os.remove(link)
-       os.symlink(infile, link)
-       infile="{0}/HBIAS_{1}.fits".format(outpath, obsdate)
-       link='/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product/HBIAS_{2}.fits'.format(obsdate[0:4], obsdate[4:8], obsdate)
-       if os.path.isfile(link) and clobber: os.remove(link)
-       os.symlink(infile, link)
+        if link:
+           ldir = '/salt/HRS_Cals/CAL_BIAS/{0}/{1}/'.format(obsdate[0:4], obsdate[4:8])
+           if not os.path.isdir(ldir): os.mkdir(ldir)
+           ldir = '/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product'.format(obsdate[0:4], obsdate[4:8])
+           if not os.path.isdir(ldir): os.mkdir(ldir)
+    
+           infile="{0}/RBIAS_{1}.fits".format(outpath, obsdate)
+           link='/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product/RBIAS_{2}.fits'.format(obsdate[0:4], obsdate[4:8], obsdate)
+           if os.path.isfile(link) and clobber: os.remove(link)
+           os.symlink(infile, link)
+           infile="{0}/HBIAS_{1}.fits".format(outpath, obsdate)
+           link='/salt/HRS_Cals/CAL_BIAS/{0}/{1}/product/HBIAS_{2}.fits'.format(obsdate[0:4], obsdate[4:8], obsdate)
+           if os.path.isfile(link) and clobber: os.remove(link)
+           os.symlink(infile, link)
 
 
 def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, first_order=53, 
@@ -336,9 +341,11 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
    if detname=='HRDET':
       prefix='R'
       process = red_process
+      rdnoise=6.81*u.electron
    elif detname=='HBDET':
       prefix='H'
       process = blue_process
+      rdnoise=7.11*u.electron
    else:
       raise ValueError('detname must be a valid HRS Detector name')
 
@@ -346,7 +353,7 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
    matches = (image_list.summary['obstype'] == 'Flat field') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode)
    flat_list = []
    for fname in image_list.summary['file'][matches]:
-        ccd = process(rawpath+fname, masterbias=master_bias)
+        ccd = process(rawpath+fname, masterbias=master_bias, error=True, rdnoise=rdnoise)
         flat_list.append(ccd)
         if sdb is not None: dq_ccd_insert(rawpath + fname, sdb)
 
@@ -357,28 +364,23 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
 
         norm = clean_flatimage(flat.data, filter_size=filter_size, flux_limit=0.3,
                 block_size=100, percentile_low=30, median_size=5)
-        hdu = fits.PrimaryHDU(norm)
-        hdu.writeto(prefix+'norm.fits', clobber=True)
 
         norm[norm>0]=1
-        ys, xs = norm.shape
-        xc = int(xs/2.0)
         if detname=='HRDET':
              xc = 1947 #int(xs/2.0)
-             ndata = norm[:,xc]
-             detect_kern = ndata[1:100]
+             detect_kern = ndata[1:100, xc]
              #these remove light that has bleed at the edges and may need adjusting
              norm[:,:20]=0
              norm[:,4040:]=0
         elif detname=='HBDET':
-             ndata = norm[:,xc]
-             detect_kern = ndata[32:110]
+             ys, xs = norm.shape
+             xc = int(xs/2.0)
+             detect_kern = ndata[32:110, xc]
 
         frame = create_orderframe(norm, first_order, xc, detect_kern, smooth_length=smooth_length, 
                       smooth_fraction=smooth_fraction, y_start=y_start, y_limit=y_limit)
         order_file = "{0}/{2}ORDER_{1}_{3}.fits".format(outpath, obsdate, prefix, obsmode.replace(' ', '_'))
         hdu = fits.PrimaryHDU(frame)
-        hdu.writeto(prefix+'order.fits', clobber=True)
         hdu.writeto(order_file, clobber=True)
 
         if link:
@@ -416,7 +418,7 @@ def hrsarc(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=Non
 
    image_list = ImageFileCollection(rawpath)
    if len(image_list.files)==0: return
-
+ 
    #make output directory
    if not os.path.isdir(outpath): os.mkdir(outpath)
 
@@ -435,10 +437,9 @@ def hrsarc(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=Non
       raise ValueError('detname must be a valid HRS Detector name')
 
    #process the arc frames
-   matches = (image_list.summary['obstype'] == 'Arc') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode)
-
-   for fname in image_list.summary['file'][matches]:
-        ccd = process(rawpath+fname, masterbias=master_bias)
+   matches = (image_list.summary['obstype'] == 'Arc') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) * (image_list.summary['propid'] == 'CAL_ARC')
+   for fname in image_list.summary['file'][matches]: 
+        ccd  = process(rawpath+fname, masterbias=master_bias)
         if sdb is not None: dq_ccd_insert(rawpath + fname, sdb)
 
         #flat field the frame
@@ -452,12 +453,13 @@ def hrsarc(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=Non
 
         if link:
             #link the individual file
-            db_file = outpath + 'dbp' + fname.replace('.fits', '.pkl')
-            link='/salt/HRS_Cals/CAL_ARC/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(db_file))
-            if os.path.isfile(link) and clobber: os.remove(link)
-            os.symlink(db_file, link)
+            for targ_ext in ['sky', 'obj']:
+                db_file = outpath + 'dbp' + fname.replace('.fits', '_{}.pkl'.format(targ_ext))
+                link='/salt/HRS_Cals/CAL_ARC/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(db_file))
+                if os.path.isfile(link) and clobber: os.remove(link)
+                os.symlink(db_file, link)
 
-def extract_spectra(arc, order_frame, n_order, soldir, target=True, flux_limit=100):
+def extract_arc(arc, order_frame, n_order, soldir, target=True, flux_limit=100):
     shift_dict, ws = pickle.load(open(soldir+'sol_%i.pkl' % n_order))
     hrs = HRSOrder(n_order)
     hrs.set_order_from_array(order_frame.data)
@@ -466,14 +468,15 @@ def extract_spectra(arc, order_frame, n_order, soldir, target=True, flux_limit=1
 
     data, coef = hrs.create_box(hrs.flux, interp=True)
 
-    pickle.dump(data, open('box_%s.pkl' % n_order, 'w'))
+    #pickle.dump(data, open('box_%s.pkl' % n_order, 'w'))
     xarr = np.arange(len(data[0]))
     warr = ws(xarr)
     flux = np.zeros_like(xarr)
-    flux, shift_dict = collapse_array(data, i_reference=10)
+    i_reference = int(data.shape[0]/2.0)
+    flux, shift_dict = collapse_array(data, i_reference=i_reference)
     return xarr, warr, flux, ws, shift_dict
 
-def upload_arc(sdb, ws, n_order, filename):
+def dq_arc(sdb, ws, n_order, filename):
     logic="FileName='%s'" % os.path.basename(filename)
     FileData_Id = sdb.select('FileData_Id','FileData',logic)[0][0]
     for i in range(len(ws.x)):
@@ -488,23 +491,238 @@ def hrs_arc_process(arc, master_order, soldir, outpath, sdb=None, link=False, fi
     n_min = master_order.data[master_order.data>0].min()
     n_max = master_order.data.max()
     ws_dict = {}
-    for n_order in np.arange(n_min, n_max):
-        if not os.path.isfile(soldir+'sol_%i.pkl' % n_order): continue
-        x, w, f, ws, sh = extract_spectra(arc, master_order, int(n_order), soldir)
-        m_arr = ws_match_lines(x, f, ws, dw=1.0, kernal_size=3)
-        m, prob = match_probability(m_arr[:,1], m_arr[:,2],
-                            m_init=mod.models.Polynomial1D(1),
-                            fitter=mod.fitting.LinearLSQFitter(),
-                            tol=0.02, n_iter=5)
-        ws = WavelengthSolution.WavelengthSolution(m_arr[:,0][prob>0.1],
-                                           m_arr[:,2][prob>0.1],
-                                           ws.model)
-        if sdb: upload_arc(sdb, ws, n_order, filename)
-        ws.fit()
-        ws_dict[n_order] = ws
-    db_file = outpath + 'dbp' + filename.replace('.fits', '.pkl')
-    print(db_file)
-    pickle.dump(ws_dict, open(db_file, 'wb'))
+    for target_fiber in [True, False]:
+        if target_fiber:
+            if target=='upper':
+               targ_ext = 'obj'
+            else:
+               targ_ext = 'sky'
+        else:
+            if target=='lower':
+               targ_ext = 'obj'
+            else:
+               targ_ext = 'sky'
+       
+        for n_order in np.arange(n_min, n_max):
+            if not os.path.isfile(soldir+'sol_%i.pkl' % n_order): continue
+            if (master_order.data==n_order).sum()==0: continue
+            try:
+                x, w, f, ws, sh = extract_arc(arc, master_order, int(n_order), soldir, target=target_fiber)
+                m_arr = ws_match_lines(x, f, ws, dw=1.0, kernal_size=3)
+                m, prob = match_probability(m_arr[:,1], m_arr[:,2],
+                                m_init=mod.models.Polynomial1D(1),
+                                fitter=mod.fitting.LinearLSQFitter(),
+                                tol=0.02, n_iter=5)
+            except Exception, e:
+                log.warning(str(e))
+                continue
+            ws = WavelengthSolution.WavelengthSolution(m_arr[:,0][prob>0.1],
+                                               m_arr[:,2][prob>0.1],
+                                               ws.model)
+            if sdb: dq_arc(sdb, ws, n_order, filename)
+            ws.fit()
+            ws_dict[n_order] = (ws, sh)
+        db_file = outpath + 'dbp' + filename.replace('.fits', '_{}.pkl'.format(targ_ext))
+        pickle.dump(ws_dict, open(db_file, 'wb'))
     
 
+def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=None, master_order=None,
+           arc_dict=None,  sdb=None, symdir='./', link=False, clobber=True):
+   """hrsscience processes the HRS science files.
+
+   Parameters
+   ----------
+   rawpath: string
+      Path to raw data
+
+   outpath: string
+      Path to output result
+
+   link: boolean
+      Add symbolic link to HRS_CALS directory
+
+   sdb: sdb_user.mysql
+      SDB object to upload data quality
+
+   link: boolean
+      Link data to their proposals
+
+   clobber: boolean
+      Overwrite existing files
+
+   
+   """
+   if not os.path.isdir(rawpath): return
+
+   image_list = ImageFileCollection(rawpath)
+   if len(image_list.files)==0: return
+ 
+   #make output directory
+   if not os.path.isdir(outpath): os.mkdir(outpath)
+
+   #get the observing date
+   obsdate=get_obsdate(image_list.summary['file'][0])
+
+   #setup the instrument prefix
+  
+   if detname=='HRDET':
+      prefix='R'
+      process = red_process
+      overscan_correct=False
+      rdnoise = 6.81 * u.electron
+   elif detname=='HBDET':
+      prefix='H'
+      process = blue_process
+      overscan_correct=True
+      master_bias=None
+      rdnoise=7.11*u.electron
+   else:
+      raise ValueError('detname must be a valid HRS Detector name')
+
+   #process the arc frames
+   matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) 
+   for fname in image_list.summary['file'][matches]: 
+        logging.info('Reducing {}'.format(fname))
+        ccd = process(rawpath+fname, masterbias=master_bias, oscan_correct=overscan_correct, error=True, rdnoise=rdnoise)
+        if sdb is not None: dq_ccd_insert(rawpath + fname, sdb)
+
+        #cosmic ray clean the data
+        crmask, cleanarr = detect_cosmics(ccd.data, inmask=None, sigclip=4.5, sigfrac=0.3,
+                   objlim=5.0, gain=1.0, readnoise=6.5,
+                   satlevel=65536.0, pssl=0.0, niter=4,
+                   sepmed=True, cleantype='meanmask', fsmode='median',
+                   psfmodel='gauss', psffwhm=2.5, psfsize=7,
+                   psfk=None, psfbeta=4.765, verbose=False)
+        ccd.data = cleanarr
+        if ccd.mask == None:
+           ccd.mask = crmask
+        else:
+           ccd.mask = ccd.mask * crmask
+
+        #flat field the frame
+        ccd=flatfield_science(ccd, master_flat, master_order, median_filter_size=None, interp=True)
+
+        #write out frame
+        outfile = "{0}/p{1}".format(outpath, fname)
+        ccd.write(outfile, clobber=True)
+
+        hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, sdb=sdb, filename=fname)
+
+        if link:
+            logging.info("Copying {} to {}".format(fname, ccd.header['PROPID']))
+            pdir='{0}/{1}/product'.format(symdir, ccd.header['PROPID'])
+
+            link = "{0}/p{1}".format(pdir, fname)
+            if os.path.isfile(link) and clobber: os.remove(link)
+            os.symlink(outfile, link)
+
+            for prefix in ['p', 'np', 'snp']:
+                for targ_ext in ['sky', 'obj']:
+                   sname = fname.replace('.fits', '_{}.fits'.format(targ_ext))
+                   sfile = "{0}/p{1}".format(outpath, sname)
+                   link = "{0}/p{1}".format(pdir, sname)
+                   if os.path.isfile(link) and clobber: os.remove(link)
+                   os.symlink(sfile, link)
+
+        
+def write_spdict(outfile, sp_dict, header=None):
+
+    o_arr = None
+    w_arr = None
+    f_arr = None
+
+    for k in sp_dict.keys():
+        w,f = sp_dict[k]
+        if w_arr is None:
+            w_arr = 1.0*w
+            f_arr = 1.0*f
+            o_arr = k*np.ones_like(w, dtype=int)
+        else:
+            w_arr = np.concatenate((w_arr, w))
+            f_arr = np.concatenate((f_arr, f))
+            o_arr = np.concatenate((o_arr, k*np.ones_like(w, dtype=int)))
+
+    c1 = fits.Column(name='Wavelength', format='D', array=w_arr, unit='Angstroms')
+    c2 = fits.Column(name='Flux', format='D', array=f_arr, unit='Counts')
+    c3 = fits.Column(name='Order', format='I', array=o_arr)
+
+    tbhdu = fits.BinTableHDU.from_columns([c1,c2,c3])
+    prihdu = fits.PrimaryHDU(header=header)
+    thdulist = fits.HDUList([prihdu, tbhdu])
+    thdulist.writeto(outfile, clobber=True)
+   
+
+
+def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=False, sdb=None, filename=None):
+    """process an hrs science frame
+
+    Parameters
+    ----------
+    p_order: int
+       Order of polynomical for normalization
+    """
+    arm, xpos, target, res, w_c, y1, y2 = mode_setup_information(ccd.header)
+
+    n_min = master_order.data[master_order.data>0].min()
+    n_max = master_order.data.max()
+    sp_dict = {}
+    
+
+    for targ_ext in ['sky', 'obj']:
+        if target == 'upper' and targ_ext=='obj':  fiber = True
+        if target == 'upper' and targ_ext=='sky':  fiber = False
+        if target == 'lower' and targ_ext=='obj':  fiber = False 
+        if target == 'lower' and targ_ext=='sky':  fiber = True 
+        logging.info('Extracting {} spectra using the {} fiber in {}'.format(targ_ext, 'upper' if fiber else 'lower', filename))
+        for n_order in arc_dict[targ_ext]:
+            if (master_order.data==n_order).sum()==0: continue
+            ws, shift = arc_dict[targ_ext][n_order]
+            w, f = extract_order(ccd, master_order, int(n_order), ws, shift, order=None, target=fiber, interp=interp)
+            try:
+               sp_dict[n_order] = [w,f]
+            except:
+               pass
+       
+        if filename is not None:
+            outfile = outpath + 'p' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+            write_spdict(outfile, sp_dict, header=ccd.header)
+
+        # preform sky subtraction
+        if 'sky':
+            sky_dict = sp_dict
+        else:
+            for n_order in sp_dict:
+                w, f = sp_dict[n_order]
+                sw, sf = sky_dict[n_order]
+                f = f - np.interp(w, sw, sf)
+                sp_dict[n_order] = [w,f]
+
+        #normalize the frame
+        continuum = mod.models.Chebyshev1D(p_order)
+        fitter=mod.fitting.LinearLSQFitter()
+        try:
+            sp_dict = normalize_spectra(sp_dict, model=continuum, fitter=fitter)
+        except:
+            continue
+
+        if filename is not None:
+            outfile = outpath + 'np' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+            write_spdict(outfile, sp_dict, header=ccd.header)
+   
+        #stitch the frame together
+        n_orders = np.array(sp_dict.keys(),dtype=int)
+        n_min = n_orders.min()
+        n_max = n_orders.max()
+        try:
+            warr, farr = stitch_spectra(sp_dict, n_min, n_max, normalize=True, 
+                                        model=mod.models.Chebyshev1D(p_order), 
+                                        fitter=mod.fitting.LinearLSQFitter())
+        except:
+            continue
+
+        if filename is not None:
+            outfile = outpath + 'snp' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+            tmp_dict={}
+            tmp_dict[0] = [warr, farr]
+            write_spdict(outfile, tmp_dict, header=ccd.header)
 
