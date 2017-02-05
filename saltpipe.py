@@ -586,7 +586,6 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
                subover=True,trim=True, median=median,function=function,order=order,rej_lo=rej_lo,
                rej_hi=rej_hi,niter=niter,masbias=True,subbias=False,interp=interp,
                clobber=True,logfile=logfile,verbose=verbose)
-      os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c {}'.format(obsdate))
 
    rawsize = 0.
    rawnum = 0
@@ -606,6 +605,10 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
    outpath = '.'
    if len(img_list)>0:
        saltobsid(propcode=propcode,obslog=obslog,rawpath=rawpath,prodpath=prodpath, outpath=outpath, prefix='mbgph', fprefix='bgph',clobber=True,logfile=logfile,verbose=verbose)
+
+   # run advanced pipeline
+   if len(img_list)>0:
+       os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c {}'.format(obsdate))
 
    return  rawsize, rawnum, prodsize, prodnum
 
