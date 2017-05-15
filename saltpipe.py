@@ -264,6 +264,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
            saltsdbloadfits(images=img, sdbname=sdbname, sdbhost=sdbhost, sdbuser=sdbuser, \
                   password=sdbpass, logfile=logfile, verbose=verbose)
 
+
        #add junk sources to the database
        raw_list=glob.glob(workpath+'scam/raw/S*.fits')
        raw_list.extend(glob.glob(workpath+'rss/raw/P*.fits'))
@@ -275,6 +276,10 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
                 saltsdbloadfits(images=img, sdbname=sdbname, sdbhost=sdbhost, sdbuser=sdbuser, \
                     password=sdbpass, logfile=logfile, verbose=verbose)
               hdu.close()
+
+       # run advanced pipeline -- currently this assumes all files are in the database
+       if hrsrawnum>0:
+           os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c -m {}'.format(obsdate))
        
 
        # construct observation and pipeline documentation
@@ -606,9 +611,6 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
    if len(img_list)>0:
        saltobsid(propcode=propcode,obslog=obslog,rawpath=rawpath,prodpath=prodpath, outpath=outpath, prefix='mbgph', fprefix='bgph',clobber=True,logfile=logfile,verbose=verbose)
 
-   # run advanced pipeline
-   if len(img_list)>0:
-       os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c {}'.format(obsdate))
 
    return  rawsize, rawnum, prodsize, prodnum
 
