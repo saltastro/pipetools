@@ -59,6 +59,10 @@ def salthrspreprocess(inpath,outpath,clobber=True, log=None,verbose=True):
 
     #open the file and write out as a fits files in the output directory
     for img in infiles:
+
+        if os.path.getsize(img) < 10000000: 
+           log.message('Image {} is too small and not usable'.format(img))
+           continue
         oimg=outpath+os.path.basename(img)+'s'
         hdu=saltio.openfits(img)
         hdu=hrsprepare(hdu)
