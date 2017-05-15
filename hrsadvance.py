@@ -45,7 +45,7 @@ from ccdproc import ImageFileCollection
 
 from pyhrs.hrsprocess import *
 from pyhrs import mode_setup_information, HRSOrder, collapse_array
-from pyhrs import normalize_spectra, stitch_spectra 
+from pyhrs import normalize_spectra, stitch_spectra, resample, calculate_velocity, convert_data
 from pyhrs import extract_order, write_spdict
 
 from specreduce import WavelengthSolution
@@ -577,16 +577,18 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
    if detname=='HRDET':
       prefix='R'
       process = red_process
-      overscan_correct=False
       rdnoise = 6.81 * u.electron
    elif detname=='HBDET':
       prefix='H'
       process = blue_process
-      overscan_correct=True
-      master_bias=None
       rdnoise=7.11*u.electron
    else:
       raise ValueError('detname must be a valid HRS Detector name')
+
+   if master_bias  is None:
+      overscan_correct=True
+   else:  
+      overscan_correct=False
 
    #process the arc frames
    matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) 
@@ -615,7 +617,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
         outfile = "{0}/p{1}".format(outpath, fname)
         ccd.write(outfile, clobber=True)
 
-        hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, sdb=sdb, filename=fname)
+        hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, sdb=sdb, filename=fname, interp=True)
 
         if link:
             if ccd.header['PROPID'] == 'JUNK': continue
@@ -633,14 +635,14 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
 
             if not os.path.isfile(pdir+'/README'): add_hrs_README(pdir)
 
-            for file_prefix in ['p', 'np', 'snp']:
+            for file_prefix in ['p', 'np', 'sp']:
                 for targ_ext in ['sky', 'obj']:
                    sname = fname.replace('.fits', '_{}.fits'.format(targ_ext))
                   
                    sfile = "{0}/{2}{1}".format(propath, sname, file_prefix)
                    link = "{0}/{2}{1}".format(pdir, sname, file_prefix)
                    if os.path.islink(link) and clobber: os.remove(link)
-                   os.symlink(sfile, link)
+                   if os.path.isfile(sfile): os.symlink(sfile, link)
 
         
 def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=False, sdb=None, filename=None):
@@ -689,35 +691,75 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
                 s = s - np.interp(w, sw, ss)
                 sp_dict[n_order] = [w, f, e, s]
 
+         
+
         #normalize the frame
         continuum = mod.models.Chebyshev1D(p_order)
         fitter=mod.fitting.LinearLSQFitter()
         try:
-            sp_dict = normalize_spectra(sp_dict, model=continuum, fitter=fitter)
+            pass #nsp_dict = normalize_spectra(sp_dict, model=continuum, fitter=fitter)
         except:
             logging.info('Failed normalizing {} because {}'.format(filename, str(e)))
             continue
 
         if filename is not None:
             outfile = outpath + 'np' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
-            write_spdict(outfile, sp_dict, header=ccd.header)
+            #write_spdict(outfile, nsp_dict, header=ccd.header)
    
         #stitch the frame together
         n_orders = np.array(sp_dict.keys(),dtype=int)
         n_min = n_orders.min()
         n_max = n_orders.max()
-        try:
-            warr, farr, earr, sarr = stitch_spectra(sp_dict, n_min, n_max, normalize=True, 
-                                        model=mod.models.Chebyshev1D(p_order), 
-                                        fitter=mod.fitting.LinearLSQFitter())
+        if arm == 'H': 
+           center_order=103
+           trim = 20
+           median_clean=9
+        elif arm=='R':
+           center_order =  72
+           trim = 50
+           median_clean = 0
+
+        if ccd.header['OBSMODE'] in ['HIGH RESOLUTION', 'HIGH STABILITY']:
+           resolution = 65000
+           dr = 4
+        elif ccd.header['OBSMODE'] in ['MEDIUM RESOLUTION']:
+           resolution = 35000
+           dr = 4
+        elif ccd.header['OBSMODE'] in ['LOW RESOLUTION']:
+           resolution = 15000
+           dr = 4
+
+        wave, flux, err, sarr = stitch_spectra(sp_dict, center_order=center_order, trim=trim)
+        try: 
+            pass
         except Exception, e:
             logging.info('Failed stitching {} because {}'.format(filename, str(e)))
             continue
 
+        swave, sarr, serr = resample(1.0*wave, sarr, abs(sarr)**0.5, R=resolution, dr=dr, median_clean=median_clean)
+        wave, flux, err = resample(wave, flux, err, R=resolution, dr=dr, median_clean=median_clean)
+
+        mask = (wave>4000)*(flux>0)
+        err = err[mask]
+        flux = flux[mask]
+        wave = wave[mask]
+        sarr = np.interp(wave, swave, sarr)
+        try:
+            pass
+        except Exception, e:
+            logging.info('Failed to resample {} because {}'.format(filename, str(e)))
+            continue
+
+        vhelio = calculate_velocity(ccd.header)
+        ccd.header['VHEL'] = (vhelio.value, 'Helocentric radial velocity (km/s)')
+        wave = convert_data(wave, vhelio)
+ 
+
         if filename is not None:
-            outfile = outpath + 'snp' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+            outfile = outpath + 'sp' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
             tmp_dict={}
-            tmp_dict[0] = [warr, farr, earr, sarr]
+            tmp_dict[0] = [wave, flux, err, sarr]
+            print(outfile)
             write_spdict(outfile, tmp_dict, header=ccd.header)
 
 
@@ -755,7 +797,67 @@ Files starting with an m* are a result of the old pipeline and are included
 only for historical reasons and may be depreciated at some point
 in the future.
 
+If you have downloaded the data from the web manager, there are additional
+files that may be available to you that have been run through A. Kniazev's
+MIDAS pipeline.   
+
+The following files were reduced using MIDAS pipeline:
+m*_[12]w.fits - extracted first(1) and second (2) fibers.
+             Wavelength calibrated (uniform step). Not merged.
+             2D spectrum, where each order is one line in 2D spectrum.
+             This is the most compact format, but only MIDAS can understand
+             it easily.
+
+m*_[12]we.fits - extracted first(1) and second(2) fibers, but each order
+             is written as separate FITS extension. FITS file has as many
+             extensions as extracted orders. Can be easily understand by IRAF.
+             NOT corrected for the blaze effect.
+
+m*_[12]wm.fits - extracted fibers, wavelength calibrated and merged.
+             Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+             NOT corrected for the blaze effect.
+
+m*_u[12]w.fits - extracted fibers, corrected for the blaze effect.
+             Wavelength calibrated (uniform step). Not merged.
+             2D spectrum, where each order is one line in 2D spectrum.
+             This is the most compact format, but only MIDAS can understand
+             it easily.
+
+m*_u[12]we.fits - extracted fibers, corrected for the blaze effect.
+             Wavelength calibrated (uniform step). Not merged.
+             Each order is written as separate FITS extension.
+             FITS file has as many extensions as extracted orders.
+             Can be easily understand by IRAF.
+
+m*_[12]wm.fits - extracted fibers, corrected for the blaze effect,
+             wavelength calibrated (uniform step) and merged.
+             Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+
+m*_wm.fits - the final result after sky fiber was subtracted.
+             Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+
+
+For more descriptions of the processing, please see:
+http://www.saao.ac.za/~akniazev/pub/HRS_MIDAS/HRS_pipeline.pdf
+
+If you use these files in your science work, please cite:
+
+For using m*fits reduced data:
+Crawford, S.M. et al. 2010
+http://adsabs.harvard.edu/abs/2010SPIE.7737E..25C
+
+For LR data:
+Kniazev, A.Y.; Gvaramadze, V.V.; Berdnikov, L.N.,
+http://adsabs.harvard.edu/abs/2016MNRAS.459.3068K
+
+For MR and HR data:
+Kniazev, A.Y.; Gvaramadze, V.V.; Berdnikov, L.N.,
+http://adsabs.harvard.edu/abs/2016arXiv161200292K
+
+
 """
     fout = open(pdir+'/README', 'w')
     fout.write(readme_str)
     fout.close()
+
+    
