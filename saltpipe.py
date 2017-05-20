@@ -29,9 +29,10 @@ Updates
 
 from __future__ import with_statement
 
-import os, time, ftplib, glob, pyfits, shutil
+import os, time, ftplib, glob, shutil
 import numpy as np
 import scipy as sp
+from astropy.io import fits
 import matplotlib
 matplotlib.use('Agg')
 
@@ -271,7 +272,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        if raw_list:
           img=''
           for img in raw_list:
-              hdu=pyfits.open(img)
+              hdu=fits.open(img)
               if hdu[0].header['PROPID'].strip()=='JUNK':
                 saltsdbloadfits(images=img, sdbname=sdbname, sdbhost=sdbhost, sdbuser=sdbuser, \
                     password=sdbpass, logfile=logfile, verbose=verbose)
@@ -476,7 +477,7 @@ def checkforpropid(image,propids):
     """
 
     #open up the image
-    struct=pyfits.open(image, mode='update')
+    struct=fits.open(image, mode='update')
     if struct:
         #get proposal code
         propid=saltkey.get('PROPID', struct[0])
@@ -576,14 +577,16 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
    prodpath = instrume+'/product'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, 'H')):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    for img in glob.glob('%s/raw/%s*fits' % (instrume, 'R')):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
-   print 'HRS IMAGE LIST ',  len(img_list)
+        struct.close()
+
    if len(img_list)>0:
       img_str=','.join(img_list)
       obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
@@ -624,9 +627,10 @@ def advanceprocess(instrume, obsdate, propcode, median, function, order, rej_lo,
    prefix = 'P'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, prefix)):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    images=','.join(img_list)
    obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
    gaindb = iraf.osfn('pysalt$data/%s/%samps.dat' % (instrume, instrume_name))
@@ -657,9 +661,10 @@ def processdata(instrume, obsdate, propcode, median, function, order, rej_lo, re
    prodpath = instrume+'/product'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, prefix)):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    img_str=','.join(img_list)
    obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
    gaindb = iraf.osfn('pysalt$data/%s/%samps.dat' % (instrume, instrume_name))

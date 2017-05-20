@@ -69,7 +69,7 @@ def salthrspreprocess(inpath,outpath,clobber=True, log=None,verbose=True):
         if log is not None:
            log.message('Writing %s to %s' % (img, oimg), with_header=False)
         saltio.writefits(hdu, oimg, clobber=clobber)
-    
+        hdu.close()
  
     return 
 
