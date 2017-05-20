@@ -484,12 +484,68 @@ def extract_arc(arc, order_frame, n_order, soldir, target=True, flux_limit=100):
     flux, shift_dict = collapse_array(data, i_reference=i_reference)
     return xarr, warr, flux, ws, shift_dict
 
-def dq_arc(sdb, ws, n_order, filename):
-    logic="FileName='%s'" % os.path.basename(filename)
+def dq_arc(sdb, ws, n_order, filename, obsmode='HIGH RESOLUTION', fiber='obj'):
+    """Upload the arc data to to the database
+
+    Parameters
+    ----------
+    sdb: mysql.sdb
+       Link tothe science database
+
+    ws: WavelengthSolution.WavelengthSolution
+       Wavelength solution containing the x and wavelength values 
+
+    n_order: int
+       HRS order that was analyzed
+
+    filename: str
+       Filename for the code
+
+    obsmode:  str
+       Observation mode
+
+    fiber: str
+       'obj' or 'sky' fiber being uploaded
+
+    
+    """
+
+    # setup up the object logic
+    if fiber == 'obj':
+       Object=1
+    else:
+       Object=0
+
+    # get the filedata ID
+    logic="FileName='{}'".format(os.path.basename(filename))
     FileData_Id = sdb.select('FileData_Id','FileData',logic)[0][0]
+
+    # get the default frames for a given mode
+    if os.path.basename(filename).startswith('H'):
+        default_arcfile_dict = {'HIGH RESOLUTION':457144, 'MEDIUM RESOLUTION': 457146, 'LOW RESOLUTION': 457148}
+    elif os.path.basename(filename).startswith('R'):
+        default_arcfile_dict = {'HIGH RESOLUTION':457145, 'MEDIUM RESOLUTION': 457147, 'LOW RESOLUTION': 457149}
+
+    # get the x, w values for the nominal frame
+    try:
+       results = sdb.select('X, wavelength', 'DQ_HrsArc', 'FileData_Id={} and HrsOrder={} and Object={}'.format(default_arcfile_dict[obsmode], n_order, Object))
+       x=np.array(results)[:,0].astype(float)
+       w=np.array(results)[:,1].astype(float)
+    except:
+       x = None
+       w = None
+
     for i in range(len(ws.x)):
-        ins_cmd = 'FileData_Id={}, HrsOrder={}, x={}, wavelength={}'.format(FileData_Id, n_order, ws.x[i], ws.wavelength[i])
+        if abs(ws.wavelength[i]-ws(ws.x[i])) > 0.05: continue
+        try:
+           j =  np.where(abs(w-ws.wavelength[i]) < 0.01)
+           dx = ws.x[i]-x[j][0]
+        except:
+           dx = -99.99
+        ins_cmd = 'FileData_Id={fid}, HrsOrder={n_order}, x={x}, wavelength={wavelength}, DeltaX={dx}, Object={Object} ON DUPLICATE KEY UPDATE  wavelength={wavelength}, DeltaX={dx}, Object={Object};'.format(fid=FileData_Id, n_order=n_order, x=ws.x[i], wavelength=ws.wavelength[i], dx=dx, Object=Object)
         sdb.insert(ins_cmd, 'DQ_HrsArc')
+
+
 
 def hrs_arc_process(arc, master_order, soldir, outpath, sdb=None, link=False, filename=None):
     """process an hrs arc
@@ -635,8 +691,10 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
 
             if not os.path.isfile(pdir+'/README'): add_hrs_README(pdir)
 
-            for file_prefix in ['p', 'np', 'sp']:
-                for targ_ext in ['sky', 'obj']:
+            for file_prefix in ['p', 'sp']:
+                for targ_ext in ['obj', 'sky']:
+                   if file_prefix=='sp' and targ_ext=='sky': continue
+
                    sname = fname.replace('.fits', '_{}.fits'.format(targ_ext))
                   
                    sfile = "{0}/{2}{1}".format(propath, sname, file_prefix)
@@ -657,10 +715,10 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
 
     n_min = master_order.data[master_order.data>0].min()
     n_max = master_order.data.max()
-    sp_dict = {}
     
 
     for targ_ext in ['sky', 'obj']:
+        sp_dict = {}
         if target == 'upper' and targ_ext=='obj':  fiber = True
         if target == 'upper' and targ_ext=='sky':  fiber = False
         if target == 'lower' and targ_ext=='obj':  fiber = False 
@@ -680,40 +738,41 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
             write_spdict(outfile, sp_dict, header=ccd.header)
 
         # preform sky subtraction
-        if 'sky':
-            sky_dict = sp_dict
+        if targ_ext == 'sky':
+            sky_dict = sp_dict.copy()
+            continue
         else:
             for n_order in sp_dict:
                 w, f, e,s  = sp_dict[n_order]
                 sw, sf, se, ss = sky_dict[n_order]
                 f = f - np.interp(w, sw, sf)
-                e = (e**2 + se**2)**0.5
+                e = (e**2 + np.interp(w, sw, se)**2)**0.5
                 s = s - np.interp(w, sw, ss)
                 sp_dict[n_order] = [w, f, e, s]
 
          
-
         #normalize the frame
-        continuum = mod.models.Chebyshev1D(p_order)
-        fitter=mod.fitting.LinearLSQFitter()
-        try:
-            pass #nsp_dict = normalize_spectra(sp_dict, model=continuum, fitter=fitter)
-        except:
-            logging.info('Failed normalizing {} because {}'.format(filename, str(e)))
-            continue
+        #continuum = mod.models.Chebyshev1D(p_order)
+        #fitter=mod.fitting.LinearLSQFitter()
+        #try:
+            #pass #nsp_dict = normalize_spectra(sp_dict, model=continuum, fitter=fitter)
+        #except:
+            #logging.info('Failed normalizing {} because {}'.format(filename, str(e)))
+            #continue
 
-        if filename is not None:
-            outfile = outpath + 'np' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+        #if filename is not None:
+            #outfile = outpath + 'np' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
             #write_spdict(outfile, nsp_dict, header=ccd.header)
    
         #stitch the frame together
         n_orders = np.array(sp_dict.keys(),dtype=int)
         n_min = n_orders.min()
         n_max = n_orders.max()
+
         if arm == 'H': 
            center_order=103
            trim = 20
-           median_clean=9
+           median_clean=0
         elif arm=='R':
            center_order =  72
            trim = 50
@@ -721,45 +780,49 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
 
         if ccd.header['OBSMODE'] in ['HIGH RESOLUTION', 'HIGH STABILITY']:
            resolution = 65000
-           dr = 4
+           dr = 2
         elif ccd.header['OBSMODE'] in ['MEDIUM RESOLUTION']:
            resolution = 35000
-           dr = 4
+           dr = 2
         elif ccd.header['OBSMODE'] in ['LOW RESOLUTION']:
            resolution = 15000
            dr = 4
 
-        wave, flux, err, sarr = stitch_spectra(sp_dict, center_order=center_order, trim=trim)
+        logging.info('Stitching {}'.format(filename))
         try: 
-            pass
+            wave, flux, err, sarr = stitch_spectra(sp_dict, center_order=center_order, trim=trim)
         except Exception, e:
             logging.info('Failed stitching {} because {}'.format(filename, str(e)))
-            continue
+            return 
 
-        swave, sarr, serr = resample(1.0*wave, sarr, abs(sarr)**0.5, R=resolution, dr=dr, median_clean=median_clean)
-        wave, flux, err = resample(wave, flux, err, R=resolution, dr=dr, median_clean=median_clean)
 
-        mask = (wave>4000)*(flux>0)
-        err = err[mask]
-        flux = flux[mask]
-        wave = wave[mask]
-        sarr = np.interp(wave, swave, sarr)
+        logging.info('Resampling fluxes in {}'.format(filename))
         try:
-            pass
+            swave, sarr, serr = resample(1.0*wave, sarr, abs(sarr)**0.5, R=resolution, dr=dr, median_clean=median_clean)
+            wave, flux, err = resample(wave, flux, err, R=resolution, dr=dr, median_clean=median_clean)
+            mask = (wave>4000)*(flux>0)
+            err = err[mask]
+            flux = flux[mask]
+            wave = wave[mask]
+            sarr = np.interp(wave, swave, sarr)
         except Exception, e:
             logging.info('Failed to resample {} because {}'.format(filename, str(e)))
             continue
 
-        vhelio = calculate_velocity(ccd.header)
-        ccd.header['VHEL'] = (vhelio.value, 'Helocentric radial velocity (km/s)')
-        wave = convert_data(wave, vhelio)
+        try:
+            logging.info('Applying heliocentric correction to {}'.format(filename))
+            vhelio = calculate_velocity(ccd.header)
+            ccd.header['VHEL'] = (vhelio.value, 'Helocentric radial velocity (km/s)')
+            wave = convert_data(wave, vhelio)
+        except Excepction, e:
+            logging.info('Failed to apply heliocentric correction to {} because {}'.format(filename, str(e)))
+            continue
  
 
         if filename is not None:
-            outfile = outpath + 'sp' +filename.replace('.fits', '_{}.fits'.format(targ_ext))
+            outfile = outpath + 'sp' + filename.replace('.fits', '_{}.fits'.format(targ_ext))
             tmp_dict={}
             tmp_dict[0] = [wave, flux, err, sarr]
-            print(outfile)
             write_spdict(outfile, tmp_dict, header=ccd.header)
 
 
