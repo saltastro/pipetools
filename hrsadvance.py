@@ -212,6 +212,7 @@ def dq_order_insert(filename, sdb):
     ys, xs =data.shape
     xc = int(xs/2.0)  
     arr = data[:, xc]
+    logging.info('Uploading HRS Order Measurements for {}'.format(filename))
     for i in range(min_order, max_order+1):
         mask = (arr == i)
         indices = np.where(mask)[0]
@@ -220,11 +221,10 @@ def dq_order_insert(filename, sdb):
         log_cmd = "Filename = '{}' and HrsOrder =  {}".format(bname, i)
         record = sdb.select('y_upper', 'DQ_HrsOrder', log_cmd)
         ins_cmd = "x_reference={},y_lower={},y_upper={}".format(xc, y_lower, y_upper)
-        logging.info('Uploading HRS Order Measurements')
         if record:
            sdb.update(ins_cmd, 'DQ_HrsOrder', log_cmd)
         else:
-           ins_cmd = "Filename='{}', HrsOrder={},HrsMode_Id={},NightInfor_Id={},".format(bname, i, mode_id, night_id)  + ins_cmd
+           ins_cmd = "Filename='{}', HrsOrder={},HrsMode_Id={},NightInfo_Id={},".format(bname, i, mode_id, night_id)  + ins_cmd
            sdb.insert(ins_cmd, 'DQ_HrsOrder')
         
 
@@ -389,6 +389,7 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
         logging.info('Created order frame {}'.format(os.path.basename(order_file)))
         hdu = fits.PrimaryHDU(frame)
         hdu.writeto(order_file, clobber=True)
+        if sdb: dq_order_insert(order_file, sdb)
 
         if link:
             link='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(outfile))
@@ -814,7 +815,7 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
             vhelio = calculate_velocity(ccd.header)
             ccd.header['VHEL'] = (vhelio.value, 'Helocentric radial velocity (km/s)')
             wave = convert_data(wave, vhelio)
-        except Excepction, e:
+        except Exception, e:
             logging.info('Failed to apply heliocentric correction to {} because {}'.format(filename, str(e)))
             continue
  
