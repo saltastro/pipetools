@@ -589,6 +589,83 @@ def hrs_arc_process(arc, master_order, soldir, outpath, sdb=None, link=False, fi
             ws_dict[n_order] = (ws, sh)
         db_file = outpath + 'dbp' + filename.replace('.fits', '_{}.pkl'.format(targ_ext))
         pickle.dump(ws_dict, open(db_file, 'wb'))
+
+def get_arc(obsdate, prefix, mode=None, cal_dir='/salt/HRS_Cals/', nlim=180, sdb=None):
+    """Find Arc solution closest in date
+    """
+    start_date = dt.datetime.strptime('{} 12:00:00'.format(obsdate), '%Y%m%d %H:%M:%S')
+
+    def get_name(start_date, i, cal_dir, prefix, mode):
+        date = start_date + dt.timedelta(seconds=i*24*3600.0)
+        obsdate = date.strftime('%Y%m%d')
+        cdir = '{cal_dir}CAL_ARC/{year}/{mmdd}/product/'.format(
+           cal_dir=cal_dir, year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix, mode=mode)
+
+        tab_cmd = 'FileData join ProposalCode using (ProposalCode_Id) join FitsHeaderImage using (FileData_Id)'
+        log_cmd = "FileName like '{prefix}{obsdate}%' and FileData.OBSMODE='{obsmode}' and Proposal_Code = 'CAL_ARC'" .format(prefix=prefix, obsmode=mode, obsdate=obsdate)
+
+        record = sdb.select('FileName', tab_cmd, log_cmd)
+        if record == (): return None
+        cfile = cdir + 'dbp'+record[0][0].replace('.fits', '_obj.pkl')
+        if os.path.isfile('hrs/product/{}'.format(os.path.basename(cfile))): return 'hrs/product/{}'.format(os.path.basename(cfile))
+        if os.path.isfile(cfile): return cfile
+
+        return None
+
+
+    for i in range(nlim):
+        #look into the past
+        cfile = get_name(start_date, i,  cal_dir, prefix, mode)
+        if cfile: return cfile
+        #look into the future
+        cfile = get_name(start_date, -i,  cal_dir, prefix, mode)
+        if cfile: return cfile
+
+    return None
+
+def run_science(obsdate, rawpath, outpath, sdb=None, link=True, symdir='./', nlim=180, mfs=11):
+        #process bias frames
+
+        #process arc frames
+        for prefix in ['H', 'R']:
+           if prefix == 'R': detname='HRDET'
+           if prefix == 'H': detname='HBDET'
+           mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}.fits'.format(
+                  cal_type="BIAS", year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix)
+           if not os.path.isfile(mccd):
+               mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
+           logging.info('Using {} for a bias file'.format(mccd))
+           masterbias = CCDData.read(mccd)
+           for obsmode in ['MEDIUM RESOLUTION', 'HIGH STABILITY', 'HIGH RESOLUTION', 'LOW RESOLUTION']:
+               mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}_{mode}.fits'.format(
+                      cal_type="FLAT", year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix, mode=obsmode.replace(' ', '_'))
+               if not os.path.isfile(mccd):
+                   mccd =  get_hrs_calibration_frame(obsdate, prefix, 'FLAT', mode=obsmode.replace(' ', '_'), cal_dir='/salt/HRS_Cals/', nlim=nlim)
+                   if mccd is None:
+                       logging.info('No {} flat for {} in {}'.format(prefix, obsdate, obsmode))
+                       continue
+               logging.info('Using {} for a {} flat file'.format(mccd, obsmode.lower()))
+               masterflat = CCDData.read(mccd)
+               mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}_{mode}.fits'.format(
+                      cal_type="ORDER", year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix, mode=obsmode.replace(' ', '_'))
+               if not os.path.isfile(mccd):
+                   mccd =  get_hrs_calibration_frame(obsdate, prefix, 'ORDER', mode=obsmode.replace(' ', '_'), cal_dir='/salt/HRS_Cals/', nlim=nlim)
+               logging.info('Using {} for an {} order file'.format(mccd, obsmode.lower()))
+               masterorder = CCDData.read(mccd, unit=u.electron)
+               marc = get_arc(obsdate, prefix, mode=obsmode, cal_dir='/salt/HRS_Cals/', nlim=180, sdb=sdb)
+               logging.info('Using {} for an {} object arc file'.format(marc, obsmode.lower()))
+               arc_dict={}
+               obj_dict = pickle.load(open(marc, 'r'))
+               arc_dict['obj'] =  obj_dict
+               sky_dict = pickle.load(open(marc.replace('obj', 'sky'), 'r'))
+               arc_dict['sky'] =  sky_dict
+               #if prefix=='H': masterbias=None
+               if int(obsdate) < 20150901: masterbias=None
+               if int(obsdate) < 20161107 and prefix=='H': masterbias=None
+               hrsscience(rawpath, outpath, detname=detname, obsmode=obsmode,  master_bias=masterbias,
+                  master_flat=masterflat, master_order=masterorder, arc_dict = arc_dict, median_filter_size=mfs,
+                  sdb=sdb, symdir=symdir, link=link, clobber=True)
+
     
 
 def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat=None, 
@@ -618,6 +695,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
 
    
    """
+   print(os.getcwd())
    if not os.path.isdir(rawpath): return
 
    image_list = ImageFileCollection(rawpath)
@@ -641,6 +719,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
       rdnoise=7.11*u.electron
    else:
       raise ValueError('detname must be a valid HRS Detector name')
+   print(prefix)
 
    if master_bias  is None:
       overscan_correct=True
@@ -649,6 +728,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
 
    #process the arc frames
    matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) 
+   print(matches)
    for fname in image_list.summary['file'][matches]: 
         logging.info('Reducing {}'.format(fname))
         ccd = process(rawpath+fname, masterbias=master_bias, oscan_correct=overscan_correct, error=True, rdnoise=rdnoise)
@@ -742,7 +822,7 @@ def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=
         if targ_ext == 'sky':
             sky_dict = sp_dict.copy()
             continue
-        else:
+        elif ccd.header['I2STAGE'] == 'Nothing In Beam':
             for n_order in sp_dict:
                 w, f, e,s  = sp_dict[n_order]
                 sw, sf, se, ss = sky_dict[n_order]
@@ -839,6 +919,9 @@ HRS REDUCED FILES
 The following files have been reducing using the pyhrs pipeline:
 p*.fits -- reduced 2D data (bias, flatfielded, gain-corrected, CR cleaned)
 p*_obj.fits or p*_sky.fits -- 1D extracted files
+sp*obj.fits -- stitched and heliocentric corrected files
+
+Older depreciated file types:
 np*_obj.fits or np*_sky.fits -- normalized data
 snp*_obj.fits or snp*_sky.fits -- stitched data 
 
@@ -925,3 +1008,4 @@ http://adsabs.harvard.edu/abs/2016arXiv161200292K
     fout.close()
 
     
+
