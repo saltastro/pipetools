@@ -1,0 +1,54 @@
+FILES AFTER HRS DATA PIPELINE with MIDAS:
+
+The following files were reduced using MIDAS pipeline:
+m*_[12]w.fits - extracted first(1) and second (2) fibers.
+	     Wavelength calibrated (uniform step). Not merged.
+	     2D spectrum, where each order is one line in 2D spectrum.
+	     This is the most compact format, but only MIDAS can understand
+	     it easily.
+
+m*_[12]we.fits - extracted first(1) and second(2) fibers, but each order
+	     is written as separate FITS extension. FITS file has as many
+	     extensions as extracted orders. Can be easily understand by IRAF.
+	     NOT corrected for the blaze effect.
+
+m*_[12]wm.fits - extracted fibers, wavelength calibrated and merged.
+	     Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+	     NOT corrected for the blaze effect.
+
+m*_u[12]w.fits - extracted fibers, corrected for the blaze effect.
+	     Wavelength calibrated (uniform step). Not merged.
+	     2D spectrum, where each order is one line in 2D spectrum.
+	     This is the most compact format, but only MIDAS can understand
+	     it easily.
+
+m*_u[12]we.fits - extracted fibers, corrected for the blaze effect.
+	     Wavelength calibrated (uniform step). Not merged.
+	     Each order is written as separate FITS extension.
+	     FITS file has as many extensions as extracted orders.
+	     Can be easily understand by IRAF.
+
+m*_[12]wm.fits - extracted fibers, corrected for the blaze effect,
+	     wavelength calibrated (uniform step) and merged.
+	     Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+
+m*_wm.fits - the final result after sky fiber was subtracted.
+	     Simple 1D FITS spectrum. Both MIDAS and IRAF understand it.
+
+
+For more descriptions of the processing, please see:
+http://www.saao.ac.za/~akniazev/pub/HRS_MIDAS/HRS_pipeline.pdf
+
+If you use these files in your science work, please cite:
+
+For using m*fits reduced data:
+Crawford, S.M. et al. 2010
+http://adsabs.harvard.edu/abs/2010SPIE.7737E..25C
+
+For LR data:
+Kniazev, A.Y.; Gvaramadze, V.V.; Berdnikov, L.N.,
+http://adsabs.harvard.edu/abs/2016MNRAS.459.3068K
+
+For MR and HR data:
+Kniazev, A.Y.; Gvaramadze, V.V.; Berdnikov, L.N.,
+http://adsabs.harvard.edu/abs/2016arXiv161200292K

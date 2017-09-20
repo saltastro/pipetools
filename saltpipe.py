@@ -29,11 +29,15 @@ Updates
 
 from __future__ import with_statement
 
-import os, time, ftplib, glob, pyfits, shutil
+import os, time, ftplib, glob, shutil
 import numpy as np
 import scipy as sp
+from astropy.io import fits
 import matplotlib
 matplotlib.use('Agg')
+
+from sdb_mysql import mysql
+
 
 from pyraf import iraf
 from pyraf.iraf import pysalt
@@ -129,8 +133,8 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
 
        #Get the list of proposal codes
        state_select='Proposal_Code'
-       state_tables='Proposal join ProposalCode using (ProposalCode_Id)'
-       state_logic="current=1"
+       state_tables='ProposalCode'
+       state_logic=""
        records=saltmysql.select(sdb, state_select, state_tables, state_logic)
        propids=[k[0] for k in records]
 
@@ -164,7 +168,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        #check rss data
        lastrssnum = checkfordata(rssrawpath, 'P', obsdate, log)
        #check scame data
-       lastscmnum = checkfordata(scmrawpath, 'S', obsdate, log)
+       lastscmnum =  checkfordata(scmrawpath, 'S', obsdate, log)
        #check for HRS Data--not filedata yet, so cannot check
    
        if lastrssnum == 1 and lastscmnum == 1:
@@ -183,29 +187,20 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
            saltio.copydir(scmrawpath,'scam/raw')
 
        #copy and pre-process the HRS data
-       try:
-           hrsbrawpath = makerawdir(obsdate, 'hbdet')
-           saltio.createdir('hrs')
-           saltio.createdir('hrs/raw')
-           message = 'Copy ' + hrsbrawpath + ' --> ' + workpath + 'raw/'
-           log.message(message)
-           salthrspreprocess(hrsbrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       saltio.createdir('hrs')
+       saltio.createdir('hrs/raw')
 
-           lasthrbnum=len(glob.glob('hrs/raw/*fits'))
-       except Exception,e:
-           log.message('Could not copy HRS data because %s' % e)
-           lasthrbnum=0
-
-       try:
-           hrsrrawpath = makerawdir(obsdate, 'hrdet')
-           message = 'Copy ' + hrsrrawpath + ' --> ' + workpath + 'raw/'
-           log.message(message)
-           salthrspreprocess(hrsrrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
-           
-           lasthrsnum=max(lasthrbnum, len(glob.glob('hrs/raw/*fits')))
-       except Exception,e:
-           log.message('Could not copy HRS data because %s' % e)
-           lasthrsnum=lasthrbnum
+       hrsbrawpath = makerawdir(obsdate, 'hbdet')
+       message = 'Copy ' + hrsbrawpath + ' --> ' + workpath + 'raw/'
+       log.message(message)
+       salthrspreprocess(hrsbrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       lasthrbnum=len(glob.glob('hrs/raw/*fits'))
+       
+       hrsrrawpath = makerawdir(obsdate, 'hrdet')
+       message = 'Copy ' + hrsrrawpath + ' --> ' + workpath + 'raw/'
+       log.message(message)
+       salthrspreprocess(hrsrrawpath, 'hrs/raw/', clobber=True, log=log, verbose=verbose)
+       lasthrsnum=max(lasthrbnum, len(glob.glob('hrs/raw/*fits')))
 
        if lastrssnum>1 or lastscmnum>1:
            message = 'Copy of data is complete'
@@ -256,7 +251,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        #advance process the data
        #NB: Turned off right now due to RSS being off
        if rssrawnum > 0:
-           advanceprocess('rss', obsdate,  propcode, median, function, order, rej_lo, rej_hi, niter, interp,sdbhost, sdbname, sdbuser, sdbpass, logfile, verbose)
+           pass #advanceprocess('rss', obsdate,  propcode, median, function, order, rej_lo, rej_hi, niter, interp,sdbhost, sdbname, sdbuser, sdbpass, logfile, verbose)
 
        #process the SCAM data
        scmrawsize, scmrawnum, scmprodsize, scmprodnum=processdata('scam', obsdate, propcode,  median, function, order, rej_lo, rej_hi, niter, interp,logfile, verbose)
@@ -273,17 +268,23 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
            saltsdbloadfits(images=img, sdbname=sdbname, sdbhost=sdbhost, sdbuser=sdbuser, \
                   password=sdbpass, logfile=logfile, verbose=verbose)
 
+
        #add junk sources to the database
        raw_list=glob.glob(workpath+'scam/raw/S*.fits')
        raw_list.extend(glob.glob(workpath+'rss/raw/P*.fits'))
        if raw_list:
           img=''
           for img in raw_list:
-              hdu=pyfits.open(img)
+              hdu=fits.open(img)
               if hdu[0].header['PROPID'].strip()=='JUNK':
                 saltsdbloadfits(images=img, sdbname=sdbname, sdbhost=sdbhost, sdbuser=sdbuser, \
                     password=sdbpass, logfile=logfile, verbose=verbose)
               hdu.close()
+
+       # run advanced pipeline -- currently this assumes all files are in the database
+       if hrsrawnum>0:
+           log.message('Processing {} HRS images'.format(hrsrawnum))
+           run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass)
        
 
        # construct observation and pipeline documentation
@@ -480,7 +481,7 @@ def checkforpropid(image,propids):
     """
 
     #open up the image
-    struct=pyfits.open(image, mode='update')
+    struct=fits.open(image, mode='update')
     if struct:
         #get proposal code
         propid=saltkey.get('PROPID', struct[0])
@@ -580,14 +581,16 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
    prodpath = instrume+'/product'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, 'H')):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    for img in glob.glob('%s/raw/%s*fits' % (instrume, 'R')):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
-   print 'HRS IMAGE LIST ',  len(img_list)
+        struct.close()
+
    if len(img_list)>0:
       img_str=','.join(img_list)
       obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
@@ -615,6 +618,7 @@ def hrsprocess(instrume, obsdate,propcode, median, function, order, rej_lo, rej_
    if len(img_list)>0:
        saltobsid(propcode=propcode,obslog=obslog,rawpath=rawpath,prodpath=prodpath, outpath=outpath, prefix='mbgph', fprefix='bgph',clobber=True,logfile=logfile,verbose=verbose)
 
+
    return  rawsize, rawnum, prodsize, prodnum
 
    
@@ -627,9 +631,10 @@ def advanceprocess(instrume, obsdate, propcode, median, function, order, rej_lo,
    prefix = 'P'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, prefix)):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    images=','.join(img_list)
    obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
    gaindb = iraf.osfn('pysalt$data/%s/%samps.dat' % (instrume, instrume_name))
@@ -660,9 +665,10 @@ def processdata(instrume, obsdate, propcode, median, function, order, rej_lo, re
    prodpath = instrume+'/product'
    img_list=[]
    for img in glob.glob('%s/raw/%s*fits' % (instrume, prefix)):
-        struct=pyfits.open(img)
+        struct=fits.open(img)
         if struct[0].header['PROPID'].upper().strip() != 'JUNK':
            img_list.append(img)
+        struct.close()
    img_str=','.join(img_list)
    obslog = '%s/%s%sOBSLOG.fits' % (prodpath, prefix, obsdate)
    gaindb = iraf.osfn('pysalt$data/%s/%samps.dat' % (instrume, instrume_name))
@@ -698,6 +704,31 @@ def processdata(instrume, obsdate, propcode, median, function, order, rej_lo, re
    return  rawsize, rawnum, prodsize, prodnum
 
 
+def run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass):
+    #os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py  -c -m {} '.format(obsdate))
+    from hrsadvance import hrsbias, run_science, run_hrsflat, run_hrsarcs
+
+    rawpath = os.getcwd() + '/hrs/raw/'
+    outpath = os.getcwd() + '/hrs/product/'
+    symdir = './'
+    mfs = None
+    link = False
+    nlim = 180
+
+    port = 3306
+    sdb = mysql(sdbhost,sdbname,sdbuser,sdbpass, port=port)
+
+    # run the bias frames
+    hrsbias(rawpath, outpath, clobber=True, sdb=sdb, link=link)
+
+    # run the flat frames
+    run_hrsflat(obsdate, rawpath, outpath, sdb=sdb, nlim=nlim, link=link)
+
+    # run the arcs
+    run_hrsarcs(obsdate,  rawpath, outpath, nlim=nlim, sdb=sdb, link=link)
+    
+    # run the science frames
+    run_science(obsdate, rawpath=rawpath, outpath=outpath, sdb=sdb, symdir=symdir, mfs=mfs)
 
  
 # -----------------------------------------------------------

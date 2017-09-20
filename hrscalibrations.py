@@ -108,6 +108,42 @@ def hrscalibrations(obsdate, sdbhost='sdb.saao', sdbname='sdb', \
               fout.write('\n')
            fout.close()
 
+       #copy over pipeline product data
+       #bias
+       prodir='/salt/data/%s/%s/hrs/product/' % (obsdate[0:4], obsdate[4:8])
+       infiles = glob.glob('%s*BIAS*fits' % (prodir))
+       for img in infiles:
+           img = img.split('/')[-1]
+           link = '/salt/HRS_Cals/CAL_BIAS/%s/%s/product/%s' % (obsdate[0:4], obsdate[4:8], img)
+           saltio.symlink(prodir+img,link,clobber)
+           log.message('Copied %s to the HRS_CAL/CAL_BIAS directory' % (img), with_header=False, with_stdout=verbose)
+
+       #flat
+       prodir='/salt/data/%s/%s/hrs/product/' % (obsdate[0:4], obsdate[4:8])
+       infiles = glob.glob('%s*FLAT*fits' % (prodir))
+       for img in infiles:
+           img = img.split('/')[-1]
+           link = '/salt/HRS_Cals/CAL_FLAT/%s/%s/product/%s' % (obsdate[0:4], obsdate[4:8], img)
+           saltio.symlink(prodir+img,link,clobber)
+           log.message('Copied %s to the HRS_CAL/CAL_FLAT directory' % (img), with_header=False, with_stdout=verbose)
+ 
+       prodir='/salt/data/%s/%s/hrs/product/' % (obsdate[0:4], obsdate[4:8])
+       infiles = glob.glob('%s*ORDER*fits' % (prodir))
+       for img in infiles:
+           img = img.split('/')[-1]
+           link = '/salt/HRS_Cals/CAL_FLAT/%s/%s/product/%s' % (obsdate[0:4], obsdate[4:8], img)
+           saltio.symlink(prodir+img,link,clobber)
+           log.message('Copied %s to the HRS_CAL/CAL_FLAT directory' % (img), with_header=False, with_stdout=verbose)
+
+       #arcs
+       prodir='/salt/data/%s/%s/hrs/product/' % (obsdate[0:4], obsdate[4:8])
+       infiles = glob.glob('%s*db*pkl' % (prodir))
+       for img in infiles:
+           img = img.split('/')[-1]
+           link = '/salt/HRS_Cals/CAL_ARC/%s/%s/product/%s' % (obsdate[0:4], obsdate[4:8], img)
+           saltio.symlink(prodir+img,link,clobber)
+           log.message('Copied %s to the HRS_CAL/CAL_ARC directory' % (img), with_header=False, with_stdout=verbose)
+
 def get_image_info(sdb, filename):
     """Get information about the image from the database"""
     select = 'fd.FileName, hdr.PROPID, hdr.CCDTYPE, hdr.OBSMODE, hdr.DETMODE, hdr.OBJECT, hdr.TELRA, hdr.TELDEC, hdr.DATE_OBS, hdr.TIME_OBS '

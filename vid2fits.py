@@ -228,7 +228,7 @@ def vid2fits(inhead, inbin,outfile, config):
    condict=fitsconfig(config)
 
    #read in the header information
-   infits=saltio.openfits(inhead)
+   infits=fits.open(inhead)
    inheader = infits['Primary'].header
    instrume=inheader['INSTRUME']
    detswv=softwareversion(inheader['DETSWV'])
@@ -326,9 +326,9 @@ def vid2fits(inhead, inbin,outfile, config):
                y1=j*awidth
                y2=y1+awidth
 
-               data = imdata[:,y1:y2].astype(numpy.int16)
+               data = imdata[:,y1:y2].astype(numpy.int32)
                hdue = fits.ImageHDU(data)
-               hdue.scale('int16','',bzero=bzero)
+               hdue.scale(type='int16',bzero=bzero, option='old')
 
                #set the header values
                datasec,detsec,ccdsec,ampsec,biassec=  \
@@ -342,9 +342,11 @@ def vid2fits(inhead, inbin,outfile, config):
                #append the extension to the image
                hduList.append(hdue)
 
-   try:
+   if 1:
        hduList.flush()
        hduList.close()
+   try:
+       pass
    except Exception, e:
        message = 'ERROR: VID2BIN -- Fail to convert %s due to %s' % (outfile, e)
        raise SaltError(message) 
