@@ -132,15 +132,20 @@ def saltcalibrations(propcode, outfile=None, sdbhost='sdb.saao', sdbname='sdb', 
                    log.message(outstr, with_header=False)
 
                #copy to the user directory
-               cfile=makefilename(r[0])
+               cfile=makefilename(r[0], state='product')
+               shutil.copy(cfile, userdir)
+               cfile=makefilename(r[0], state='raw')
                shutil.copy(cfile, userdir)
 
        #close outfile
        if outfile: fout.close()
 
-def makefilename(filename):
+def makefilename(filename, state='product'):
     obsdate=filename[1:9]
-    return '/salt/data/%s/%s/rss/product/mbxgp%s' % (obsdate[0:4], obsdate[4:8], filename)
+    if state == 'product':
+        return '/salt/data/%s/%s/rss/product/mbxgp%s' % (obsdate[0:4], obsdate[4:8], filename)
+    else:
+        return '/salt/data/%s/%s/rss/raw/%s' % (obsdate[0:4], obsdate[4:8], filename)
 
 def makelogic(logic, startdate, enddate):
 

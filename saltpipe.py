@@ -36,6 +36,9 @@ from astropy.io import fits
 import matplotlib
 matplotlib.use('Agg')
 
+from sdb_mysql import mysql
+
+
 from pyraf import iraf
 from pyraf.iraf import pysalt
 
@@ -130,8 +133,8 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
 
        #Get the list of proposal codes
        state_select='Proposal_Code'
-       state_tables='Proposal join ProposalCode using (ProposalCode_Id)'
-       state_logic="current=1"
+       state_tables='ProposalCode'
+       state_logic=""
        records=saltmysql.select(sdb, state_select, state_tables, state_logic)
        propids=[k[0] for k in records]
 
@@ -280,7 +283,8 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
 
        # run advanced pipeline -- currently this assumes all files are in the database
        if hrsrawnum>0:
-           os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py -c -m {}'.format(obsdate))
+           log.message('Processing {} HRS images'.format(hrsrawnum))
+           run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass)
        
 
        # construct observation and pipeline documentation
@@ -700,6 +704,31 @@ def processdata(instrume, obsdate, propcode, median, function, order, rej_lo, re
    return  rawsize, rawnum, prodsize, prodnum
 
 
+def run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass):
+    #os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py  -c -m {} '.format(obsdate))
+    from hrsadvance import hrsbias, run_science, run_hrsflat, run_hrsarcs
+
+    rawpath = os.getcwd() + '/hrs/raw/'
+    outpath = os.getcwd() + '/hrs/product/'
+    symdir = './'
+    mfs = None
+    link = False
+    nlim = 180
+
+    port = 3306
+    sdb = mysql(sdbhost,sdbname,sdbuser,sdbpass, port=port)
+
+    # run the bias frames
+    hrsbias(rawpath, outpath, clobber=True, sdb=sdb, link=link)
+
+    # run the flat frames
+    run_hrsflat(obsdate, rawpath, outpath, sdb=sdb, nlim=nlim, link=link)
+
+    # run the arcs
+    run_hrsarcs(obsdate,  rawpath, outpath, nlim=nlim, sdb=sdb, link=link)
+    
+    # run the science frames
+    run_science(obsdate, rawpath=rawpath, outpath=outpath, sdb=sdb, symdir=symdir, mfs=mfs)
 
  
 # -----------------------------------------------------------
