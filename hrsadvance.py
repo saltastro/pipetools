@@ -394,6 +394,8 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
         if link:
             link='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(outfile))
             if os.path.islink(link) and clobber: os.remove(link)
+            print(outfile)
+            print(link)
             os.symlink(outfile, link)
             olink='/salt/HRS_Cals/CAL_FLAT/{0}/{1}/product/{2}'.format(obsdate[0:4], obsdate[4:8], os.path.basename(order_file))
             if os.path.islink(olink) and clobber: os.remove(olink)
@@ -623,6 +625,71 @@ def get_arc(obsdate, prefix, mode=None, cal_dir='/salt/HRS_Cals/', nlim=180, sdb
 
     return None
 
+
+def run_hrsflat(obsdate, rawpath, outpath, sdb=None, nlim=180, link=True):
+    """Run the flat fields"""
+
+    # process the red flat fields
+    prefix = 'R'
+    mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
+    logging.info('Using {} for the Master Bias frame'.format(mccd))
+    masterbias = CCDData.read(mccd, units=u.adu)
+    for obsmode in ['HIGH STABILITY', 'LOW RESOLUTION', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION']:
+        hrsflat(rawpath, outpath, detname='HRDET', obsmode=obsmode,  master_bias=masterbias,
+                first_order=53, y_start=4, y_limit=3920, smooth_length=20, smooth_fraction=0.4, filter_size=151,
+                clobber=True, sdb=sdb, link=link)
+
+    #process blue flat fields
+    prefix = 'H'
+    mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
+    logging.info('Using {} for the Master Bias frame'.format(mccd))
+    masterbias = CCDData.read(mccd, units=u.adu)
+    for obsmode in ['HIGH STABILITY', 'LOW RESOLUTION', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION']:
+        filter_size = 101
+        if obsmode == 'LOW RESOLUTION': filter_size = 131
+        try:
+           hrsflat(rawpath, outpath, detname='HBDET', obsmode=obsmode,  master_bias=masterbias,
+                first_order=84, y_start=30, y_limit=3884, smooth_length=20, smooth_fraction=0.4, filter_size=filter_size,
+                clobber=True, sdb=sdb, link=link)
+        except ValueError:
+           hrsflat(rawpath, outpath, detname='HBDET', obsmode=obsmode,  master_bias=masterbias,
+                first_order=84, y_start=30, y_limit=3884, smooth_length=20, smooth_fraction=0.4, filter_size=101,
+                clobber=True, sdb=sdb, link=link)
+
+def run_hrsarcs(obsdate, rawpath, outpath,  nlim=180, sdb=None, link=True):
+    """Run HRS arc frames"""
+
+    mode_dict={}
+    mode_dict['LOW RESOLUTION']='lr'
+    mode_dict['MEDIUM RESOLUTION']='mr'
+    mode_dict['HIGH RESOLUTION'] = 'hr'
+    mode_dict['HIGH STABILITY'] = 'hs'
+
+    #process arc frames
+    for prefix in ['H', 'R']:
+       if prefix == 'R': detname='HRDET'
+       if prefix == 'H': detname='HBDET'
+
+       mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
+       logging.info('Using {} for the Master Bias frame'.format(mccd))
+       masterbias = CCDData.read(mccd)
+
+       for obsmode in ['LOW RESOLUTION', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION']: #high stability
+
+           mccd =  get_hrs_calibration_frame(obsdate, prefix, 'FLAT', mode=obsmode.replace(' ', '_'), cal_dir='/salt/HRS_Cals/', nlim=nlim)
+           logging.info('Using {} for the {} flat frame'.format(mccd, obsmode.lower()))
+           masterflat = CCDData.read(mccd)
+
+           mccd =  get_hrs_calibration_frame(obsdate, prefix, 'ORDER', mode=obsmode.replace(' ', '_'), cal_dir='/salt/HRS_Cals/', nlim=nlim)
+           logging.info('Using {} for the {} order frame'.format(mccd, obsmode.lower()))
+           masterorder = CCDData.read(mccd, unit=u.electron)
+
+           hrsarc(rawpath, outpath, detname=detname, obsmode=obsmode,  master_bias=masterbias,
+                  master_flat=masterflat, master_order=masterorder, sol_dir='/home/sa/smc/hrs/{}/'.format(mode_dict[obsmode]),
+                  sdb=sdb, link=link, clobber=True)
+
+
+
 def run_science(obsdate, rawpath, outpath, sdb=None, link=True, symdir='./', nlim=180, mfs=11):
         #process bias frames
 
@@ -636,7 +703,7 @@ def run_science(obsdate, rawpath, outpath, sdb=None, link=True, symdir='./', nli
                mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
            logging.info('Using {} for a bias file'.format(mccd))
            masterbias = CCDData.read(mccd)
-           for obsmode in ['MEDIUM RESOLUTION', 'HIGH STABILITY', 'HIGH RESOLUTION', 'LOW RESOLUTION']:
+           for obsmode in ['MEDIUM RESOLUTION', 'HIGH RESOLUTION', 'LOW RESOLUTION']:#,'HIGH STABILITY']:
                mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}_{mode}.fits'.format(
                       cal_type="FLAT", year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix, mode=obsmode.replace(' ', '_'))
                if not os.path.isfile(mccd):
@@ -728,7 +795,6 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
 
    #process the arc frames
    matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) 
-   print(matches)
    for fname in image_list.summary['file'][matches]: 
         logging.info('Reducing {}'.format(fname))
         ccd = process(rawpath+fname, masterbias=master_bias, oscan_correct=overscan_correct, error=True, rdnoise=rdnoise)
@@ -781,7 +847,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
                    sfile = "{0}/{2}{1}".format(propath, sname, file_prefix)
                    link = "{0}/{2}{1}".format(pdir, sname, file_prefix)
                    if os.path.islink(link) and clobber: os.remove(link)
-                   if os.path.isfile(sfile): os.symlink(sfile, link)
+                   os.symlink(sfile, link)
 
         
 def hrs_science_process(ccd, master_order, arc_dict, outpath, p_order=7, interp=False, sdb=None, filename=None):
@@ -919,7 +985,7 @@ HRS REDUCED FILES
 The following files have been reducing using the pyhrs pipeline:
 p*.fits -- reduced 2D data (bias, flatfielded, gain-corrected, CR cleaned)
 p*_obj.fits or p*_sky.fits -- 1D extracted files
-sp*obj.fits -- stitched and heliocentric corrected files
+sp*obj.fits -- stitched spectra corrected for heliocentric velocities and vacuum wavelengths
 
 Older depreciated file types:
 np*_obj.fits or np*_sky.fits -- normalized data
