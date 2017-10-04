@@ -223,8 +223,8 @@ def movetobeachhead(pid,zipfile, datapath, beachdir, sdbhost, sdbname, sdbuser,p
    sdbpassword=password
    db=saltmysql.connectdb(sdbhost,sdbname,sdbuser,sdbpassword)
    state_select='p.Username'
-   state_from='Proposal as pr join ProposalCode as c using  (ProposalCode_Id) join ProposalContact as pc using (Proposal_Id) join Investigator as i on (pc.Contact_Id=i.Investigator_Id) join PiptUser as p using (PiptUser_Id)'
-   state_logic="pr.current=1 and  c.Proposal_Code='%s'" % pid
+   state_from='ProposalCode as c join ProposalContact as pc using (ProposalCode_Id) join Investigator as i on (pc.Contact_Id=i.Investigator_Id) join PiptUser as p using (PiptUser_Id)'
+   state_logic="c.Proposal_Code='%s'" % pid
    record=saltmysql.select(db,state_select,state_from,state_logic)
    record=set(record)
 
