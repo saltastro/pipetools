@@ -185,13 +185,12 @@ def findpropinfo(pid,sdb):
     """
     propinfo={}
     #setup the the query
-    state_select='pr.Proposal_Id,c.Proposal_Code,i2.Surname,i2.Email'
+    state_select='c.Proposal_Code,c.Proposal_Code,i2.Surname,i2.Email'
     state_from='''
 	Investigator as i join PiptUser using (PiptUser_Id) join Investigator as i2 on (PiptUser.Investigator_Id=i2.Investigator_Id),
-	Proposal as pr 
-	  join ProposalCode as c using (ProposalCode_Id) 
-	  join  ProposalContact as pc using (Proposal_Id) '''
-    state_logic="i.Investigator_Id=pc.Contact_ID and pc.Proposal_ID=pr.Proposal_ID and pr.current=1 and c.Proposal_Code='%s'" %pid
+	ProposalCode as c
+	  join  ProposalContact as pc using (ProposalCode_Id) '''
+    state_logic="i.Investigator_Id=pc.Contact_ID and pc.ProposalCode_ID=c.ProposalCode_ID and c.Proposal_Code='%s'" %pid
     # left over by intersting way to call it: ORDER BY pr.Proposal_ID DESC" % pid
     record=saltmysql.select(sdb,state_select,state_from,state_logic)
 
