@@ -355,7 +355,7 @@ def hrsflat(rawpath, outpath, detname, obsmode, master_bias=None, f_limit=1000, 
       raise ValueError('detname must be a valid HRS Detector name')
 
    #process the flat  frames
-   matches = (image_list.summary['obstype'] == 'Flat field') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode)
+   matches = (image_list.summary['obstype'] == 'Flat field') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode) * (image_list.summary['propid'] != 'JUNK')
    flat_list = []
    for fname in image_list.summary['file'][matches]:
         logging.info('Processing flat image {}'.format(fname))
@@ -667,7 +667,7 @@ def run_hrsarcs(obsdate, rawpath, outpath,  nlim=180, sdb=None, link=True):
     mode_dict['HIGH STABILITY'] = 'hs'
 
     #process arc frames
-    for prefix in ['H', 'R']:
+    for prefix in ['R', 'H']:
        if prefix == 'R': detname='HRDET'
        if prefix == 'H': detname='HBDET'
 
@@ -675,7 +675,7 @@ def run_hrsarcs(obsdate, rawpath, outpath,  nlim=180, sdb=None, link=True):
        logging.info('Using {} for the Master Bias frame'.format(mccd))
        masterbias = CCDData.read(mccd)
 
-       for obsmode in ['LOW RESOLUTION', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION']: #high stability
+       for obsmode in ['HIGH STABILITY', 'LOW RESOLUTION', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION']: 
 
            mccd =  get_hrs_calibration_frame(obsdate, prefix, 'FLAT', mode=obsmode.replace(' ', '_'), cal_dir='/salt/HRS_Cals/', nlim=nlim)
            logging.info('Using {} for the {} flat frame'.format(mccd, obsmode.lower()))
@@ -695,7 +695,7 @@ def run_science(obsdate, rawpath, outpath, sdb=None, link=True, symdir='./', nli
         #process bias frames
 
         #process arc frames
-        for prefix in ['H', 'R']:
+        for prefix in ['R', 'H']:
            if prefix == 'R': detname='HRDET'
            if prefix == 'H': detname='HBDET'
            mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}.fits'.format(
@@ -704,7 +704,7 @@ def run_science(obsdate, rawpath, outpath, sdb=None, link=True, symdir='./', nli
                mccd =  get_hrs_calibration_frame(obsdate, prefix, 'BIAS',  mode=None, cal_dir='/salt/HRS_Cals/', nlim=nlim)
            logging.info('Using {} for a bias file'.format(mccd))
            masterbias = CCDData.read(mccd)
-           for obsmode in ['MEDIUM RESOLUTION', 'HIGH RESOLUTION', 'LOW RESOLUTION']:#,'HIGH STABILITY']:
+           for obsmode in ['HIGH STABILITY', 'MEDIUM RESOLUTION', 'HIGH RESOLUTION', 'LOW RESOLUTION']:
                mccd = 'hrs/product/{prefix}{cal_type}_{year}{mmdd}_{mode}.fits'.format(
                       cal_type="FLAT", year=obsdate[0:4], mmdd=obsdate[4:8], prefix=prefix, mode=obsmode.replace(' ', '_'))
                if not os.path.isfile(mccd):
@@ -795,7 +795,7 @@ def hrsscience(rawpath, outpath, detname, obsmode, master_bias=None, master_flat
       overscan_correct=False
 
    #process the arc frames
-   matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode ) 
+   matches = (image_list.summary['obstype'] == 'Science') * (image_list.summary['detnam'] == detname) * (image_list.summary['obsmode'] == obsmode )  * (image_list.summary['propid'] != 'JUNK')
    for fname in image_list.summary['file'][matches]: 
         logging.info('Reducing {}'.format(fname))
         ccd = process(rawpath+fname, masterbias=master_bias, oscan_correct=overscan_correct, error=True, rdnoise=rdnoise)

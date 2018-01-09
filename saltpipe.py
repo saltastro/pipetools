@@ -74,6 +74,7 @@ from saltadvance import saltadvance
 
 from salterror import SaltError
 
+
 debug=True
 
 # Make sure the plotting functions work with an older version of matplotlib
@@ -284,7 +285,7 @@ def saltpipe(obsdate,pinames,archive,ftp,email,emserver,emuser,empasswd,bcc, qcp
        # run advanced pipeline -- currently this assumes all files are in the database
        if hrsrawnum>0:
            log.message('Processing {} HRS images'.format(hrsrawnum))
-           run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass)
+           run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass, logfile)
        
 
        # construct observation and pipeline documentation
@@ -704,9 +705,19 @@ def processdata(instrume, obsdate, propcode, median, function, order, rej_lo, re
    return  rawsize, rawnum, prodsize, prodnum
 
 
-def run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass):
+def run_hrsadvance(obsdate, sdbhost, sdbname, sdbuser, sdbpass, logfile):
     #os.system('/usr/bin/env python  /home/sa/smc/hrs/run_hrsadvance.py  -c -m {} '.format(obsdate))
     from hrsadvance import hrsbias, run_science, run_hrsflat, run_hrsarcs
+
+    import logging as lg
+    lg.basicConfig(level=lg.INFO)
+    logger = lg.getLogger()
+    hdlr = lg.FileHandler(logfile)
+    formatter = lg.Formatter('%(asctime)s %(levelname)s %(message)s')
+    hdlr.setFormatter(formatter)
+    logger.addHandler(hdlr)
+
+
 
     rawpath = os.getcwd() + '/hrs/raw/'
     outpath = os.getcwd() + '/hrs/product/'
